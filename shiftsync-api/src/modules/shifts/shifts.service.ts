@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
   ConflictException,
@@ -8,6 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { toZonedTime } from 'date-fns-tz';
+import {
+  parseDateTimeForLocation,
+  withLocalTimeDisplay,
+} from '../../common/utils/timezone.util';
 import { Shift } from './entities/shift.entity';
 import { Location } from '../locations/entities/location.entity';
 import { User } from '../users/entities/user.entity';
@@ -118,8 +123,16 @@ export class ShiftsService {
     });
     if (!loc) throw new NotFoundException('Location not found');
 
-    const startAt = new Date(dto.startAt);
-    const endAt = new Date(dto.endAt);
+    let startAt: Date;
+    let endAt: Date;
+    try {
+      startAt = parseDateTimeForLocation(dto.startAt.trim(), loc.ianaTimezone);
+      endAt = parseDateTimeForLocation(dto.endAt.trim(), loc.ianaTimezone);
+    } catch {
+      throw new BadRequestException(
+        'Invalid startAt/endAt. Use ISO 8601 with optional offset; without offset, times are interpreted in the location timezone.',
+      );
+    }
     const isPremium =
       dto.isPremium ?? computeIsPremium(startAt, loc.ianaTimezone);
 
@@ -134,7 +147,8 @@ export class ShiftsService {
       editCutoffHours: dto.editCutoffHours ?? 48,
       isPremium,
     });
-    return this.shiftsRepo.save(shift);
+    const saved = await this.shiftsRepo.save(shift);
+    return withLocalTimeDisplay(saved, loc.ianaTimezone) as Shift;
   }
 
   async update(
@@ -155,14 +169,18 @@ export class ShiftsService {
       );
     }
 
-    if (dto.startAt) {
-      shift.startAt = new Date(dto.startAt);
-      shift.isPremium = computeIsPremium(
-        shift.startAt,
-        loc?.ianaTimezone ?? 'UTC',
+    const tz = loc?.ianaTimezone ?? 'UTC';
+    try {
+      if (dto.startAt) {
+        shift.startAt = parseDateTimeForLocation(dto.startAt.trim(), tz);
+        shift.isPremium = computeIsPremium(shift.startAt, tz);
+      }
+      if (dto.endAt) shift.endAt = parseDateTimeForLocation(dto.endAt.trim(), tz);
+    } catch {
+      throw new BadRequestException(
+        'Invalid startAt/endAt. Use ISO 8601 with optional offset; without offset, times are interpreted in the location timezone.',
       );
     }
-    if (dto.endAt) shift.endAt = new Date(dto.endAt);
     if (dto.requiredSkillId !== undefined)
       shift.requiredSkillId = dto.requiredSkillId;
     if (dto.title !== undefined) shift.title = dto.title;
@@ -188,7 +206,7 @@ export class ShiftsService {
         locationId: shift.locationId,
       });
     }
-    return shift;
+    return withLocalTimeDisplay(shift, tz) as Shift;
   }
 
   async remove(id: string): Promise<void> {
@@ -200,7 +218,7 @@ export class ShiftsService {
   }
 
   async publish(id: string): Promise<PublishResult> {
-    const shift = await this.findById(id, ['assignments', 'assignments.user']);
+    const shift = await this.findById(id, ['assignments', 'assignments.user', 'location']);
     if (shift.status !== 'draft') {
       throw new ConflictException('Only draft shifts can be published');
     }
@@ -253,7 +271,7 @@ export class ShiftsService {
     }
 
     return {
-      shift,
+      shift: withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift,
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
@@ -272,7 +290,8 @@ export class ShiftsService {
     shift.status = 'draft';
     shift.publishedAt = null;
     await this.shiftsRepo.save(shift);
-    return shift;
+    const withLocation = await this.findById(id, ['location']);
+    return withLocalTimeDisplay(shift, withLocation.location?.ianaTimezone ?? 'UTC') as Shift;
   }
 
   async getAssignments(shiftId: string): Promise<Shift['assignments']> {
@@ -304,7 +323,9 @@ export class ShiftsService {
       'assignments',
       'assignments.user',
     ]);
-    if (actor.role === 'admin') return shift;
+    if (actor.role === 'admin') {
+      return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
+    }
     if (actor.role === 'manager') {
       const manager = await this.usersRepo.findOne({
         where: { id: actor.id },
@@ -314,12 +335,12 @@ export class ShiftsService {
       if (!managedIds.includes(shift.locationId)) {
         throw new ForbiddenException('No access to this shift');
       }
-      return shift;
+      return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
     }
     const isAssigned = (shift.assignments ?? []).some(
       (a) => a.userId === actor.id,
     );
     if (!isAssigned) throw new ForbiddenException('No access to this shift');
-    return shift;
+    return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
   }
 }

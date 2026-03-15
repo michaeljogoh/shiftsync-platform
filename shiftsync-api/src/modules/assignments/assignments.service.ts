@@ -332,6 +332,10 @@ export class AssignmentsService {
     return { valid: true };
   }
 
+  /**
+   * Availability: convert shift (UTC) to location timezone with date-fns-tz (toZonedTime),
+   * then compare against availability windows' dayOfWeek and time range. No manual UTC offset arithmetic.
+   */
   private async checkAvailability(
     user: User,
     shift: Shift,
