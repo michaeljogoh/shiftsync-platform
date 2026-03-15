@@ -8,45 +8,16 @@ import {
   Post,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 import { Public, CurrentUser } from '../../common/decorators/auth.decorators';
 import type { SessionPayload, SessionUser } from './auth.types';
-
-class LoginDto {
-  @IsEmail()
-  email!: string;
-
-  @IsNotEmpty()
-  password!: string;
-}
-
-class RefreshDto {
-  @IsNotEmpty()
-  refreshToken!: string;
-}
-
-class LogoutDto {
-  @IsNotEmpty()
-  refreshToken!: string;
-}
-
-class UpdateNotificationsDto {
-  @IsBoolean()
-  notifyInApp!: boolean;
-
-  @IsBoolean()
-  notifyEmail!: boolean;
-}
-
-class ChangePasswordDto {
-  @IsNotEmpty()
-  currentPassword!: string;
-
-  @IsNotEmpty()
-  @MinLength(8)
-  newPassword!: string;
-}
+import {
+  LoginDto,
+  RefreshDto,
+  LogoutDto,
+  UpdateNotificationsDto,
+  ChangePasswordDto,
+} from './dto/LoginDto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -58,9 +29,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and obtain tokens and session' })
   @ApiOkResponse({ description: 'Login successful' })
-  async login(
-    @Body() dto: LoginDto,
-  ): Promise<{
+  async login(@Body() dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
     session: SessionPayload;
@@ -73,9 +42,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access and refresh tokens' })
   @ApiOkResponse({ description: 'Tokens refreshed' })
-  async refresh(
-    @Body() dto: RefreshDto,
-  ): Promise<{
+  async refresh(@Body() dto: RefreshDto): Promise<{
     accessToken: string;
     refreshToken: string;
     session: SessionPayload;
@@ -94,9 +61,7 @@ export class AuthController {
   @Get('me')
   @ApiOperation({ summary: 'Get current session' })
   @ApiOkResponse({ description: 'Current session returned' })
-  async me(
-    @CurrentUser() user: SessionUser,
-  ): Promise<SessionPayload> {
+  async me(@CurrentUser() user: SessionUser): Promise<SessionPayload> {
     return this.authService.getSessionForUser(user);
   }
 
@@ -128,4 +93,3 @@ export class AuthController {
     );
   }
 }
-

@@ -26,6 +26,9 @@ import * as Joi from 'joi';
           .default('true'),
         OVERTIME_HARD_BLOCK_HOURS: Joi.number().default(12),
         DEFAULT_EDIT_CUTOFF_HOURS: Joi.number().default(48),
+        PUBLISH_BLOCK_UNFILLED_HEADCOUNT: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
       }),
     }),
   ],
