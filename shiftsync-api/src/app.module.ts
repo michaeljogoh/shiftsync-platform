@@ -20,7 +20,25 @@ import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './modules/database/database.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, LocationsModule, SkillsModule, AvailabilityModule, ShiftsModule, AssignmentsModule, SwapsModule, NotificationsModule, AuditModule, AnalyticsModule, RealtimeModule, JobsModule, MailModule, CommonModule, ConfigModule, DatabaseModule],
+  imports: [
+    AuthModule,
+    UsersModule,
+    LocationsModule,
+    SkillsModule,
+    AvailabilityModule,
+    ShiftsModule,
+    AssignmentsModule,
+    SwapsModule,
+    NotificationsModule,
+    AuditModule,
+    AnalyticsModule,
+    RealtimeModule,
+    JobsModule,
+    MailModule,
+    CommonModule,
+    ConfigModule,
+    DatabaseModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
