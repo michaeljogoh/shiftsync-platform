@@ -18,6 +18,8 @@ import { AssignmentsService } from '../assignments/assignments.service';
 import type { SessionUser } from '../auth/auth.types';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RealtimeEvents } from '../realtime/realtime-events';
+import { MailService } from '../mail/mail.service';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class SwapsService {
@@ -28,9 +30,12 @@ export class SwapsService {
     private readonly assignmentsRepo: Repository<ShiftAssignment>,
     @InjectRepository(Shift)
     private readonly shiftsRepo: Repository<Shift>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
     private readonly notificationsService: NotificationsService,
     private readonly assignmentsService: AssignmentsService,
     private readonly realtimeService: RealtimeService,
+    private readonly mailService: MailService,
   ) {}
 
   async create(dto: CreateSwapDto, initiatorId: string): Promise<SwapRequest> {
@@ -112,6 +117,10 @@ export class SwapsService {
         referenceType: 'swap',
         referenceId: swap.id,
       });
+      const targetUser = await this.usersRepo.findOne({ where: { id: targetUserId } });
+      if (targetUser) {
+        await this.mailService.sendSwapRequest(targetUser, swap);
+      }
     }
 
     return swap;
@@ -343,6 +352,14 @@ export class SwapsService {
       RealtimeEvents.SWAP_STATUS_CHANGED,
       { swapId: swap.id, status: swap.status },
     );
+
+    if (swap.initiator) {
+      await this.mailService.sendSwapApproved(
+        swap.initiator,
+        swap.targetUser ?? null,
+        swap,
+      );
+    }
 
     return swap;
   }

@@ -19,5 +19,6 @@ import { LocationAccessGuard } from '../../common/guards/location-access.guard';
   ],
   controllers: [LocationsController],
   providers: [LocationsService, LocationAccessGuard],
+  exports: [LocationsService],
 })
 export class LocationsModule {}
