@@ -17,4 +17,6 @@ export const NotificationType = {
   OVERTIME_EXCEEDED: 'overtime.exceeded',
   AVAILABILITY_CHANGED: 'availability.changed',
   CONSECUTIVE_DAY_WARNING: 'consecutive_day.warning',
+  CUTOFF_WARNING: 'cutoff.warning',
+  FAIRNESS_REPORT: 'fairness.report',
 } as const;

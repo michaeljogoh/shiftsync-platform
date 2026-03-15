@@ -21,6 +21,7 @@ import type { SessionUser } from '../auth/auth.types';
 import { SwapsService } from '../swaps/swaps.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { RealtimeEvents } from '../realtime/realtime-events';
+import { MailService } from '../mail/mail.service';
 
 export interface PublishResult {
   shift: Shift;
@@ -54,6 +55,7 @@ export class ShiftsService {
     private readonly swapsService: SwapsService,
     private readonly configService: ConfigService,
     private readonly realtimeService: RealtimeService,
+    private readonly mailService: MailService,
   ) {}
 
   async findAll(
@@ -244,6 +246,9 @@ export class ShiftsService {
           referenceType: 'shift',
           referenceId: shift.id,
         });
+      }
+      if (a.user) {
+        await this.mailService.sendSchedulePublished(a.user, [shift]);
       }
     }
 

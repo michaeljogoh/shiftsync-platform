@@ -10,6 +10,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { SwapsModule } from '../swaps/swaps.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
     AssignmentsModule,
     SwapsModule,
     RealtimeModule,
+    MailModule,
   ],
   controllers: [ShiftsController],
   providers: [ShiftsService],

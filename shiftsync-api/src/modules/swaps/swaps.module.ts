@@ -9,6 +9,7 @@ import { SwapsService } from './swaps.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AssignmentsModule } from '../assignments/assignments.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RealtimeModule } from '../realtime/realtime.module';
     NotificationsModule,
     AssignmentsModule,
     RealtimeModule,
+    MailModule,
   ],
   controllers: [SwapsController],
   providers: [SwapsService],
