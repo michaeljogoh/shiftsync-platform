@@ -9,7 +9,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 import { ShiftsService } from './shifts.service';
 import { AssignmentsService } from '../assignments/assignments.service';
 import { CreateShiftDto } from './dto/create-shift.dto';
@@ -58,6 +67,9 @@ export class ShiftsController {
   @Roles('admin', 'manager')
   @UseGuards(LocationAccessGuard)
   @ApiOperation({ summary: 'Create shift' })
+  @ApiCreatedResponse({ description: 'Shift created' })
+  @ApiBadRequestResponse({ description: 'Validation failed or invalid dates' })
+  @ApiForbiddenResponse({ description: 'No access to location' })
   async create(@CurrentUser() user: SessionUser, @Body() dto: CreateShiftDto) {
     return this.shiftsService.create(dto, user.id);
   }
@@ -73,6 +85,8 @@ export class ShiftsController {
   @RequirePermission('shifts:update')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Update shift' })
+  @ApiNotFoundResponse({ description: 'Shift not found' })
+  @ApiConflictResponse({ description: 'Within edit cutoff for published shift' })
   async update(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,

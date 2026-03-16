@@ -51,7 +51,7 @@ export class Shift extends BaseEntity {
   })
   status!: ShiftStatus;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   publishedAt: Date | null = null;
 
   @Column({ type: 'smallint', default: 48 })

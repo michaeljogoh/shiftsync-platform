@@ -1,12 +1,12 @@
 import 'reflect-metadata';
 import { AppDataSource } from '../typeorm.config';
+import { runSeed } from './database-seeder';
 
 async function run() {
   await AppDataSource.initialize();
 
   try {
-    // TODO: implement DatabaseSeeder in later step
-    // Placeholder to satisfy npm run seed
+    await runSeed(AppDataSource);
   } finally {
     await AppDataSource.destroy();
   }

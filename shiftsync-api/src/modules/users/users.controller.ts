@@ -10,7 +10,15 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { AssignmentsService } from '../assignments/assignments.service';
@@ -56,6 +64,9 @@ export class UsersController {
   @RequirePermission('users:create')
   @Roles('admin')
   @ApiOperation({ summary: 'Create user (Admin)' })
+  @ApiCreatedResponse({ description: 'User created' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiForbiddenResponse({ description: 'Admin only' })
   async create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
   }
@@ -63,6 +74,7 @@ export class UsersController {
   @Get(':id')
   @RequirePermission('users:view')
   @ApiOperation({ summary: 'Get user by ID' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   async findOne(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.usersService.findByIdForView(user, id);
   }
