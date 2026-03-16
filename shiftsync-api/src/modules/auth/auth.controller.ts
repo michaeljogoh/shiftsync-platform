@@ -7,7 +7,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiOkResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiOkResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { Public, CurrentUser } from '../../common/decorators/auth.decorators';
 import type { SessionPayload, SessionUser } from './auth.types';
@@ -28,7 +34,9 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login and obtain tokens and session' })
-  @ApiOkResponse({ description: 'Login successful' })
+  @ApiOkResponse({ description: 'Login successful; returns accessToken, refreshToken, session' })
+  @ApiBadRequestResponse({ description: 'Invalid body or validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid email or password' })
   async login(@Body() dto: LoginDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -42,6 +50,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access and refresh tokens' })
   @ApiOkResponse({ description: 'Tokens refreshed' })
+  @ApiBadRequestResponse({ description: 'Invalid or expired refresh token' })
   async refresh(@Body() dto: RefreshDto): Promise<{
     accessToken: string;
     refreshToken: string;
@@ -68,6 +77,7 @@ export class AuthController {
   @Patch('me/notifications')
   @ApiOperation({ summary: 'Update notification preferences' })
   @ApiOkResponse({ description: 'Preferences updated' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
   async updateNotifications(
     @CurrentUser() user: SessionUser,
     @Body() dto: UpdateNotificationsDto,
@@ -82,6 +92,7 @@ export class AuthController {
   @Patch('me/password')
   @ApiOperation({ summary: 'Change current user password' })
   @ApiOkResponse({ description: 'Password changed' })
+  @ApiBadRequestResponse({ description: 'Validation failed or current password wrong' })
   async changePassword(
     @CurrentUser() user: SessionUser,
     @Body() dto: ChangePasswordDto,

@@ -8,7 +8,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 import { SwapsService } from './swaps.service';
 import { CreateSwapDto } from './dto/create-swap.dto';
 import { AcceptSwapDto, DenySwapDto } from './dto/respond-swap.dto';

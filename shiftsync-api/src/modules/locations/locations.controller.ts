@@ -8,7 +8,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiForbiddenResponse,
+} from '@nestjs/swagger';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
@@ -36,6 +44,9 @@ export class LocationsController {
   @RequirePermission('locations:create')
   @Roles('admin')
   @ApiOperation({ summary: 'Create location (Admin)' })
+  @ApiCreatedResponse({ description: 'Location created' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiForbiddenResponse({ description: 'Admin only' })
   async create(@Body() dto: CreateLocationDto) {
     return this.locationsService.create(dto);
   }
@@ -43,6 +54,7 @@ export class LocationsController {
   @Get(':id')
   @RequirePermission('locations:view')
   @ApiOperation({ summary: 'Get location by ID' })
+  @ApiNotFoundResponse({ description: 'Location not found' })
   async findOne(@Param('id') id: string) {
     return this.locationsService.findById(id);
   }
