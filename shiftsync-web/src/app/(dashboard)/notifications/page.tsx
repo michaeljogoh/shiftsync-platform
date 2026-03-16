@@ -1,7 +1,7 @@
 import { dehydrate } from '@tanstack/react-query';
 
 import { getServerSession } from '@/lib/auth/server-session';
-import { fetchNotifications, fetchUnreadCount } from '@/lib/api/server/notifications';
+import { fetchUnreadCount } from '@/lib/api/server/notifications';
 import { makeQueryClient } from '@/lib/tanstack-query/client';
 import { queryKeys } from '@/lib/query-keys';
 import { ReactQueryProvider } from '@/lib/tanstack-query/ReactQueryProvider';
@@ -14,21 +14,10 @@ export default async function NotificationsPage() {
   }
 
   const queryClient = makeQueryClient();
-  await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.notifications.all(),
-      queryFn: () =>
-        fetchNotifications({
-          limit: 25,
-          offset: 0,
-          token: session.accessToken,
-        }),
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.notifications.unreadCount(),
-      queryFn: () => fetchUnreadCount({ token: session.accessToken }),
-    }),
-  ]);
+  await queryClient.prefetchQuery({
+    queryKey: queryKeys.notifications.unreadCount(),
+    queryFn: () => fetchUnreadCount({ token: session.accessToken }),
+  });
 
   const dehydratedState = dehydrate(queryClient);
 

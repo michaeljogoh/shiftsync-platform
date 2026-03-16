@@ -28,10 +28,16 @@ export const queryKeys = {
   users: {
     all: (filters?: unknown) => ['users', filters] as const,
     detail: (id: string) => ['users', id] as const,
+    availability: (userId: string) => ['users', userId, 'availability'] as const,
+    assignments: (userId: string, start?: string, end?: string) =>
+      ['assignments', 'user', userId, { start, end }] as const,
   },
   locations: {
     all: () => ['locations'] as const,
     onDuty: (id: string) => ['locations', id, 'on-duty'] as const,
+  },
+  audit: {
+    logs: (filters?: unknown) => ['audit', 'logs', filters] as const,
   },
 };
 
