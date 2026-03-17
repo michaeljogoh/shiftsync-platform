@@ -27,3 +27,9 @@ export interface NotificationNewPayload {
   userId: string;
 }
 
+export interface DutyUpdatePayload {
+  locationId: string;
+  onDuty: { userId: string; shiftId: string }[];
+  at: string;
+}
+

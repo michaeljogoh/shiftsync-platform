@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { UserSummary } from '@/lib/api/server/users';
+import { formatShiftTimeRange } from '@/lib/format-shift-time';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { RoleGate } from '@/components/shared/RoleGate';
 import { AvailabilityEditor } from './availability-editor';
@@ -215,11 +216,23 @@ function StaffScheduleTab({ userId }: { userId: string }) {
         <p className="text-slate-400">No assignments in this range.</p>
       ) : (
         <ul className="space-y-1">
-          {list.slice(0, 10).map((a: { id: string; shift?: { title?: string; startAt?: string } }) => (
-            <li key={a.id} className="rounded border border-slate-700 px-2 py-1 text-slate-200">
-              {a.shift?.title ?? 'Shift'} · {a.shift?.startAt ? new Date(a.shift.startAt).toLocaleString() : '—'}
-            </li>
-          ))}
+          {list.slice(0, 10).map((a: { id: string; shift?: { title?: string; startAt?: string; endAt?: string; location?: { ianaTimezone?: string } } }) => {
+            const shift = a.shift;
+            const timeLabel = shift?.startAt && shift?.endAt
+              ? formatShiftTimeRange({
+                  startAt: shift.startAt,
+                  endAt: shift.endAt,
+                  locationTimezone: shift.location?.ianaTimezone ?? 'UTC',
+                }).primary
+              : shift?.startAt
+                ? new Date(shift.startAt).toLocaleString()
+                : '—';
+            return (
+              <li key={a.id} className="rounded border border-slate-700 px-2 py-1 text-slate-200">
+                {shift?.title ?? 'Shift'} · {timeLabel}
+              </li>
+            );
+          })}
           {list.length > 10 && <p className="text-slate-500">+{list.length - 10} more</p>}
         </ul>
       )}

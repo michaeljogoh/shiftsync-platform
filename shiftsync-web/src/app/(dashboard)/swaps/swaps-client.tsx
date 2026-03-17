@@ -16,9 +16,12 @@ import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { SwapRequestSummary } from '@/lib/api/server/swaps';
 import type { LocationSummary } from '@/lib/api/server/locations';
+import { formatShiftTimeRange } from '@/lib/format-shift-time';
+import { useAuthStore } from '@/lib/stores/auth.store';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { RoleGate } from '@/components/shared/RoleGate';
 import { toast } from 'sonner';
+import { CreateSwapRequestForm, type AssignmentOption } from './create-swap-request-form';
 
 async function fetchSwapsClient(locationId?: string, status?: string): Promise<SwapRequestSummary[]> {
   const params = new URLSearchParams();
@@ -37,14 +40,26 @@ interface SwapsClientProps {
   locations: LocationSummary[];
 }
 
+async function fetchMyAssignments(userId: string): Promise<AssignmentOption[]> {
+  const start = new Date();
+  const end = new Date();
+  end.setDate(end.getDate() + 14);
+  const { data } = await apiClient.get<Array<{ id: string; shift?: { id: string; title: string | null; startAt: string } }>>(
+    `/users/${userId}/assignments?startDate=${start.toISOString().slice(0, 10)}&endDate=${end.toISOString().slice(0, 10)}`,
+  );
+  return Array.isArray(data) ? data : [];
+}
+
 export function SwapsClient({ locations }: SwapsClientProps) {
   const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.session?.user?.id);
   const [view, setView] = useState<'manager' | 'staff'>('manager');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [denyModal, setDenyModal] = useState<SwapRequestSummary | null>(null);
   const [denyReason, setDenyReason] = useState('');
   const [actioning, setActioning] = useState(false);
+  const [createSwapOpen, setCreateSwapOpen] = useState(false);
 
   const { data: managerSwaps = [], isLoading: managerLoading } = useQuery({
     queryKey: [...queryKeys.swaps.all(), { locationId: locationFilter, status: statusFilter }],
@@ -84,12 +99,24 @@ export function SwapsClient({ locations }: SwapsClientProps) {
 
   const formatDate = (iso: string) => new Date(iso).toLocaleString();
 
+  const formatShiftLabel = (shift: { title?: string | null; startAt: string; endAt: string; location?: { name: string; ianaTimezone?: string } }) => {
+    const tz = shift.location?.ianaTimezone ?? 'UTC';
+    const { primary } = formatShiftTimeRange({ startAt: shift.startAt, endAt: shift.endAt, locationTimezone: tz });
+    return `${shift.title ?? 'Shift'} · ${primary}`;
+  };
+
+  const { data: myAssignments = [] } = useQuery({
+    queryKey: ['assignments', 'me', userId],
+    queryFn: () => fetchMyAssignments(userId!),
+    enabled: createSwapOpen && !!userId,
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-slate-50">Swap & Drop Requests</h1>
-        <RoleGate role={['admin', 'manager']}>
-          <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <RoleGate role={['admin', 'manager']}>
             <Button
               variant={view === 'manager' ? 'secondary' : 'ghost'}
               size="sm"
@@ -104,9 +131,28 @@ export function SwapsClient({ locations }: SwapsClientProps) {
             >
               My requests
             </Button>
-          </div>
-        </RoleGate>
+          </RoleGate>
+          <RoleGate role={['staff']}>
+            {view !== 'staff' && (
+              <Button variant="ghost" size="sm" onClick={() => setView('staff')}>
+                My requests
+              </Button>
+            )}
+          </RoleGate>
+          {view === 'staff' && userId && (
+            <Button size="sm" onClick={() => setCreateSwapOpen(true)}>
+              New request
+            </Button>
+          )}
+        </div>
       </div>
+
+      <CreateSwapRequestForm
+        open={createSwapOpen}
+        onOpenChange={setCreateSwapOpen}
+        myAssignments={myAssignments}
+        targetAssignments={[]}
+      />
 
       {view === 'manager' && (
         <PermissionGate require="swaps:view" fallback={<p className="text-sm text-slate-400">You need permission to view swap requests.</p>}>
@@ -167,7 +213,7 @@ export function SwapsClient({ locations }: SwapsClientProps) {
                       </td>
                       <td className="px-3 py-2 text-slate-400">
                         {swap.initiatorAssignment?.shift
-                          ? `${swap.initiatorAssignment.shift.title ?? 'Shift'} · ${formatDate(swap.initiatorAssignment.shift.startAt)}`
+                          ? formatShiftLabel(swap.initiatorAssignment.shift)
                           : '—'}
                       </td>
                       <td className="px-3 py-2 text-slate-400">{formatDate(swap.createdAt)}</td>

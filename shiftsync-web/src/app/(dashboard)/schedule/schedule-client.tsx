@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import { weekToStartEnd } from '@/lib/schedule-utils';
+import { useUIStore } from '@/lib/stores/ui.store';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
 import type { LocationSummary } from '@/lib/api/server/locations';
 import type { SkillSummary } from '@/lib/api/server/skills';
@@ -17,6 +18,7 @@ import { WeeklyCalendarView } from './weekly-calendar-view';
 import { ScheduleListView } from './schedule-list-view';
 import { ShiftDetailSheet } from './shift-detail-sheet';
 import { CreateShiftForm } from './create-shift-form';
+import { AssignStaffModal } from './assign-staff-modal';
 
 async function fetchShiftsClient(
   locationId: string | undefined,
@@ -38,6 +40,15 @@ interface ScheduleClientProps {
   skills: SkillSummary[];
 }
 
+function weekStringToMonday(week: string): Date {
+  const d = new Date(week + 'T12:00:00.000Z');
+  const day = d.getUTCDay();
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() - day + (day === 0 ? -6 : 1));
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+
 export function ScheduleClient({
   locationId,
   week,
@@ -47,11 +58,24 @@ export function ScheduleClient({
   const router = useRouter();
   const pathname = usePathname();
   const queryClient = useQueryClient();
+  const viewMode = useUIStore((s) => s.scheduleViewMode);
+  const setScheduleViewMode = useUIStore((s) => s.setScheduleViewMode);
+  const setActiveWeek = useUIStore((s) => s.setActiveWeek);
+  const setActiveLocationFilter = useUIStore((s) => s.setActiveLocationFilter);
   const [createOpen, setCreateOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('calendar');
   const [detailShiftId, setDetailShiftId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [assignShift, setAssignShift] = useState<ShiftSummary | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
+
+  useEffect(() => {
+    setActiveWeek(weekStringToMonday(week));
+  }, [week, setActiveWeek]);
+
+  useEffect(() => {
+    setActiveLocationFilter(locationId ? [locationId] : []);
+  }, [locationId, setActiveLocationFilter]);
 
   const { data: shifts = [], isLoading, isError } = useQuery({
     queryKey: queryKeys.shifts.byLocation(locationId, week),
@@ -60,12 +84,13 @@ export function ScheduleClient({
 
   const setWeek = useCallback(
     (newWeek: string) => {
+      setActiveWeek(weekStringToMonday(newWeek));
       const url = new URL(pathname ?? '/schedule');
       url.searchParams.set('week', newWeek);
       if (locationId) url.searchParams.set('locationId', locationId);
       router.push(url.pathname + url.search);
     },
-    [pathname, locationId, router],
+    [pathname, locationId, router, setActiveWeek],
   );
 
   const handleShiftClick = useCallback((shift: ShiftSummary) => {
@@ -119,7 +144,7 @@ export function ScheduleClient({
         week={week}
         onWeekChange={setWeek}
         viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        onViewModeChange={setScheduleViewMode}
         locationIds={locationId ? [locationId] : []}
         locations={locations}
         onAddShift={() => setCreateOpen(true)}
@@ -160,10 +185,21 @@ export function ScheduleClient({
         onOpenChange={setDetailOpen}
         onAssign={(shift) => {
           setDetailOpen(false);
-          setDetailShiftId(shift.id);
-          setDetailOpen(true);
+          setAssignShift(shift);
+          setAssignOpen(true);
         }}
         afterMutation={() =>
+          queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() })
+        }
+      />
+      <AssignStaffModal
+        shift={assignShift}
+        open={assignOpen}
+        onOpenChange={(open) => {
+          setAssignOpen(open);
+          if (!open) setAssignShift(null);
+        }}
+        afterSuccess={() =>
           queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() })
         }
       />

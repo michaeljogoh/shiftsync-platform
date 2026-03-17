@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
+import { formatShiftTimeRange } from '@/lib/format-shift-time';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { PencilIcon, UserPlusIcon, SendIcon } from 'lucide-react';
 
@@ -15,16 +16,6 @@ interface ScheduleListViewProps {
   onAssign?: (shift: ShiftSummary) => void;
   onEdit?: (shift: ShiftSummary) => void;
   onPublish?: (shift: ShiftSummary) => void;
-}
-
-function formatTime(iso: string, tz?: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString('en-US', {
-    timeZone: tz ?? 'UTC',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
 }
 
 function formatDate(iso: string, tz?: string): string {
@@ -105,9 +96,24 @@ export function ScheduleListView({
                               {shift.status}
                             </Badge>
                           </div>
-                          <div className="mt-0.5 flex items-center gap-3 text-xs text-slate-400">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
                             <span>
-                              {formatTime(shift.startAt, tz)} – {formatTime(shift.endAt, tz)}
+                              {(() => {
+                                const { primary, secondary } = formatShiftTimeRange({
+                                  startAt: shift.startAt,
+                                  endAt: shift.endAt,
+                                  locationTimezone: tz,
+                                  showUserLocal: true,
+                                });
+                                return (
+                                  <>
+                                    {primary}
+                                    {secondary && (
+                                      <span className="text-slate-500">{secondary}</span>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </span>
                             <span>{shift.requiredSkill?.name ?? '—'}</span>
                             <span className="flex items-center gap-1">

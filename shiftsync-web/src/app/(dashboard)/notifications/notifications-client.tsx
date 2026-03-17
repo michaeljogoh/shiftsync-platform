@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
+import { useNotificationsStore } from '@/lib/stores/notifications.store';
 import type { NotificationItem } from '@/lib/api/server/notifications';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,7 @@ export function NotificationsClient() {
   const handleMarkAllRead = async () => {
     try {
       await apiClient.patch('/notifications/read-all');
+      useNotificationsStore.getState().setAllRead();
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() });
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount() });
       toast.success('All marked as read');

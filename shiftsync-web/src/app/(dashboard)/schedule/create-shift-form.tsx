@@ -64,7 +64,7 @@ export function CreateShiftForm({
     const formData = new FormData();
     formData.set('locationId', values.locationId);
     formData.set('requiredSkillId', values.requiredSkillId);
-    if (values.title) formData.set('title', values.title);
+    formData.set('title', values.title);
     // datetime-local gives "YYYY-MM-DDTHH:mm"; backend accepts no-offset ISO (interpreted in location TZ)
     const startAt = values.startAt.includes(':') && values.startAt.split(':').length === 2
       ? `${values.startAt}:00`
@@ -150,7 +150,7 @@ export function CreateShiftForm({
           </div>
 
           <div className="grid gap-2">
-            <Label htmlFor="title">Title (optional)</Label>
+            <Label htmlFor="title">Title</Label>
             <Input id="title" placeholder="e.g. Bar shift" {...register('title')} />
             {errors.title && (
               <p className="text-xs text-destructive">{errors.title.message}</p>
