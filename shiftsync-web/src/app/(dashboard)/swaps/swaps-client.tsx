@@ -21,7 +21,10 @@ import { useAuthStore } from '@/lib/stores/auth.store';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { RoleGate } from '@/components/shared/RoleGate';
 import { toast } from 'sonner';
+import { FullPageError } from '@/components/shared/FullPageError';
+import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { CreateSwapRequestForm, type AssignmentOption } from './create-swap-request-form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 async function fetchSwapsClient(locationId?: string, status?: string): Promise<SwapRequestSummary[]> {
   const params = new URLSearchParams();
@@ -61,11 +64,13 @@ export function SwapsClient({ locations }: SwapsClientProps) {
   const [actioning, setActioning] = useState(false);
   const [createSwapOpen, setCreateSwapOpen] = useState(false);
 
-  const { data: managerSwaps = [], isLoading: managerLoading } = useQuery({
+  const { data: managerSwaps = [], isLoading: managerLoading, isError: managerError, error: managerErr, refetch: refetchSwaps } = useQuery({
     queryKey: [...queryKeys.swaps.all(), { locationId: locationFilter, status: statusFilter }],
     queryFn: () => fetchSwapsClient(locationFilter || undefined, statusFilter || undefined),
     enabled: view === 'manager',
   });
+
+  const swapStatusCode = (managerErr as { response?: { status?: number } })?.response?.status;
 
   const handleApprove = async (swap: SwapRequestSummary) => {
     setActioning(true);
@@ -184,8 +189,47 @@ export function SwapsClient({ locations }: SwapsClientProps) {
             </select>
           </div>
 
-          {managerLoading && <div className="text-sm text-slate-400">Loading…</div>}
-          {!managerLoading && (
+          {managerLoading && (
+            <div className="overflow-x-auto rounded-lg border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700 bg-slate-900/70">
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Type</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Initiator</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Target</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Shift</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Submitted</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Status</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="border-b border-slate-800">
+                      <td className="px-3 py-2"><Skeleton className="h-5 w-14 rounded" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-4 w-24" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-4 w-32" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-5 w-20 rounded" /></td>
+                      <td className="px-3 py-2"><Skeleton className="h-7 w-16 rounded" /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {managerError && view === 'manager' && (
+            swapStatusCode === 403 ? (
+              <PermissionDenied />
+            ) : (
+              <FullPageError
+                message="Failed to load swap requests. Please try again."
+                onRetry={() => refetchSwaps()}
+              />
+            )
+          )}
+          {!managerLoading && !managerError && (
             <div className="overflow-x-auto rounded-lg border border-slate-800">
               <table className="w-full text-sm">
                 <thead>
@@ -237,7 +281,10 @@ export function SwapsClient({ locations }: SwapsClientProps) {
                 </tbody>
               </table>
               {managerSwaps.length === 0 && (
-                <div className="px-3 py-8 text-center text-sm text-slate-500">No swap requests match the filters.</div>
+                <div className="flex flex-col items-center justify-center px-3 py-12 text-center">
+                  <p className="text-sm font-medium text-slate-200">No pending requests</p>
+                  <p className="mt-1 text-xs text-slate-500">When staff submit swap or drop requests, they&apos;ll appear here.</p>
+                </div>
               )}
             </div>
           )}
