@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import { useNotificationsStore } from '@/lib/stores/notifications.store';
+import { FullPageError } from '@/components/shared/FullPageError';
 import type { NotificationItem } from '@/lib/api/server/notifications';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -87,13 +88,15 @@ export function NotificationsClient() {
     }
   };
 
-  if (listLoading && offset === 0) {
+  const isInitialLoading = listLoading && !data?.pages?.length;
+
+  if (isInitialLoading) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h1 className="text-lg font-semibold text-slate-50">Notifications</h1>
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
         </div>
       </div>
@@ -102,11 +105,12 @@ export function NotificationsClient() {
 
   if (listError) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-4">
         <h1 className="text-lg font-semibold text-slate-50">Notifications</h1>
-        <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-          Failed to load notifications. Please try again.
-        </div>
+        <FullPageError
+          message="Failed to load notifications. Please try again."
+          onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() })}
+        />
       </div>
     );
   }
@@ -134,8 +138,8 @@ export function NotificationsClient() {
       {notifications.length === 0 ? (
         <Card className="border-slate-800 bg-slate-900/50">
           <CardHeader>
-            <CardTitle className="text-slate-100">No notifications</CardTitle>
-            <CardDescription>You&apos;re all caught up.</CardDescription>
+            <CardTitle className="text-slate-100">You&apos;re all caught up ✓</CardTitle>
+            <CardDescription>No new notifications. Check back later.</CardDescription>
           </CardHeader>
         </Card>
       ) : (

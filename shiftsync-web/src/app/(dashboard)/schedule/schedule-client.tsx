@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import { weekToStartEnd } from '@/lib/schedule-utils';
@@ -13,6 +14,10 @@ import { useUIStore } from '@/lib/stores/ui.store';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
 import type { LocationSummary } from '@/lib/api/server/locations';
 import type { SkillSummary } from '@/lib/api/server/skills';
+import { FullPageError } from '@/components/shared/FullPageError';
+import { PermissionDenied } from '@/components/shared/PermissionDenied';
+import { NotFound } from '@/components/shared/NotFound';
+import { ScheduleCalendarSkeleton, ScheduleListSkeleton } from '@/components/shared/ScheduleSkeleton';
 import { ScheduleControls, type ViewMode } from './schedule-controls';
 import { WeeklyCalendarView } from './weekly-calendar-view';
 import { ScheduleListView } from './schedule-list-view';
@@ -77,10 +82,12 @@ export function ScheduleClient({
     setActiveLocationFilter(locationId ? [locationId] : []);
   }, [locationId, setActiveLocationFilter]);
 
-  const { data: shifts = [], isLoading, isError } = useQuery({
+  const { data: shifts = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.shifts.byLocation(locationId, week),
     queryFn: () => fetchShiftsClient(locationId, week),
   });
+
+  const statusCode = (error as { response?: { status?: number } })?.response?.status;
 
   const setWeek = useCallback(
     (newWeek: string) => {
@@ -120,18 +127,43 @@ export function ScheduleClient({
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        <div className="h-10 w-64 animate-pulse rounded bg-slate-800" />
-        <div className="h-64 animate-pulse rounded bg-slate-800" />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-semibold text-slate-50">Schedule</h1>
+        </div>
+        <ScheduleControls
+          week={week}
+          onWeekChange={setWeek}
+          viewMode={viewMode}
+          onViewModeChange={setScheduleViewMode}
+          locationIds={locationId ? [locationId] : []}
+          locations={locations}
+          onAddShift={() => setCreateOpen(true)}
+          onPublishWeek={() => {}}
+          isPublishing={false}
+          hasDrafts={false}
+        />
+        {viewMode === 'calendar' ? (
+          <ScheduleCalendarSkeleton week={week} />
+        ) : (
+          <ScheduleListSkeleton />
+        )}
       </div>
     );
   }
 
   if (isError) {
+    if (statusCode === 403) {
+      return <PermissionDenied />;
+    }
+    if (statusCode === 404) {
+      return <NotFound message="No schedule found for this week." backHref="/schedule" />;
+    }
     return (
-      <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-        Failed to load shifts. Please try again.
-      </div>
+      <FullPageError
+        message="Failed to load shifts. Check your connection and try again."
+        onRetry={() => refetch()}
+      />
     );
   }
 
@@ -152,7 +184,14 @@ export function ScheduleClient({
         isPublishing={publishing}
         hasDrafts={hasDrafts}
       />
-      {viewMode === 'calendar' ? (
+      {shifts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-6 py-12 text-center">
+          <p className="text-sm font-medium text-slate-200">No shifts scheduled yet.</p>
+          <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+            + Add Shift
+          </Button>
+        </div>
+      ) : viewMode === 'calendar' ? (
         <WeeklyCalendarView
           shifts={shifts}
           week={week}

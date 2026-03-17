@@ -3,8 +3,12 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
+import { FullPageError } from '@/components/shared/FullPageError';
+import { PermissionDenied } from '@/components/shared/PermissionDenied';
+import { AnalyticsSkeleton } from '@/components/shared/AnalyticsSkeleton';
 import type { LocationSummary } from '@/lib/api/server/locations';
 
 const DEFAULT_HOURLY_RATE = 15;
@@ -37,7 +41,7 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
   const [fairnessLocationId, setFairnessLocationId] = useState<string>('');
   const [fairnessPeriod, setFairnessPeriod] = useState(() => getDateRange(28));
 
-  const { data: overtime = [], isLoading: overtimeLoading } = useQuery({
+  const { data: overtime = [], isLoading: overtimeLoading, isError: overtimeError, error: overtimeErr, refetch: refetchOvertime } = useQuery({
     queryKey: queryKeys.analytics.overtime(locationId || undefined, weekStart),
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -47,6 +51,8 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
       return data;
     },
   });
+
+  const statusCode = (overtimeErr as { response?: { status?: number } })?.response?.status;
 
   const { data: hoursDist = [], isLoading: hoursLoading } = useQuery({
     queryKey: ['analytics', 'hours', locationId || undefined, dateRange.startDate, dateRange.endDate],
@@ -84,6 +90,27 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
     [overtime],
   );
 
+  if (overtimeLoading) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-lg font-semibold text-slate-50">Analytics</h1>
+        <AnalyticsSkeleton />
+      </div>
+    );
+  }
+
+  if (overtimeError) {
+    if (statusCode === 403) {
+      return <PermissionDenied />;
+    }
+    return (
+      <FullPageError
+        message="Failed to load analytics. Check your connection and try again."
+        onRetry={() => refetchOvertime()}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <h1 className="text-lg font-semibold text-slate-50">Analytics</h1>
@@ -115,11 +142,10 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
           />
         </CardHeader>
         <CardContent>
-          {overtimeLoading && <p className="text-sm text-slate-400">Loading…</p>}
-          {!overtimeLoading && overtimeWithCost.length === 0 && (
+          {overtimeWithCost.length === 0 && (
             <p className="text-sm text-slate-400">No staff over 35h this week.</p>
           )}
-          {!overtimeLoading && overtimeWithCost.length > 0 && (
+          {overtimeWithCost.length > 0 && (
             <div className="space-y-2">
               <div className="grid grid-cols-[1fr_80px_80px_100px] gap-2 text-xs font-medium text-slate-400">
                 <span>Staff</span>
@@ -165,7 +191,17 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {hoursLoading && <p className="text-sm text-slate-400">Loading…</p>}
+          {hoursLoading && (
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 flex-1 max-w-xs rounded" />
+                  <Skeleton className="h-4 w-10" />
+                </div>
+              ))}
+            </div>
+          )}
           {!hoursLoading && hoursDist.length === 0 && <p className="text-sm text-slate-400">No data.</p>}
           {!hoursLoading && hoursDist.length > 0 && (
             <div className="space-y-1">
@@ -218,7 +254,16 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {fairnessLoading && <p className="text-sm text-slate-400">Loading…</p>}
+          {fairnessLoading && (
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <div className="space-y-1">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full rounded" />
+                ))}
+              </div>
+            </div>
+          )}
           {!fairnessLoading && fairness && (
             <div className="space-y-3">
               <p className="text-sm">

@@ -9,8 +9,11 @@ import { queryKeys } from '@/lib/query-keys';
 import type { UserSummary } from '@/lib/api/server/users';
 import type { LocationSummary } from '@/lib/api/server/locations';
 import type { SkillSummary } from '@/lib/api/server/skills';
-import { StaffDetailSheet } from './staff-detail-sheet';
+import { FullPageError } from '@/components/shared/FullPageError';
+import { PermissionDenied } from '@/components/shared/PermissionDenied';
+import { StaffTableSkeleton } from '@/components/shared/StaffTableSkeleton';
 import { PermissionGate } from '@/components/shared/PermissionGate';
+import { StaffDetailSheet } from './staff-detail-sheet';
 
 async function fetchUsersClient(filters: {
   role?: string;
@@ -47,10 +50,12 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
     [roleFilter, locationFilter, skillFilter],
   );
 
-  const { data: users = [], isLoading, isError, error } = useQuery({
+  const { data: users = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.users.all(filters),
     queryFn: () => fetchUsersClient(filters),
   });
+
+  const statusCode = (error as { response?: { status?: number } })?.response?.status;
 
   const filtered = useMemo(() => {
     if (activeFilter === 'all') return users;
@@ -119,14 +124,18 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           </select>
         </div>
 
-        {isLoading && (
-          <div className="text-sm text-slate-400">Loading staff…</div>
-        )}
+        {isLoading && <StaffTableSkeleton />}
         {isError && (
-          <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
-            {(error as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-              'You may need admin access to view the staff list.'}
-          </div>
+          <>
+            {statusCode === 403 ? (
+              <PermissionDenied />
+            ) : (
+              <FullPageError
+                message={(error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to load staff. Please try again.'}
+                onRetry={() => refetch()}
+              />
+            )}
+          </>
         )}
         {!isLoading && !isError && (
           <div className="overflow-x-auto rounded-lg border border-slate-800">
@@ -205,8 +214,9 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
               </tbody>
             </table>
             {filtered.length === 0 && (
-              <div className="px-3 py-8 text-center text-sm text-slate-500">
-                No staff match the filters.
+              <div className="flex flex-col items-center justify-center px-3 py-12 text-center">
+                <p className="text-sm font-medium text-slate-300">No staff match the filters.</p>
+                <p className="mt-1 text-xs text-slate-500">Try changing filters or add staff from your admin.</p>
               </div>
             )}
           </div>
