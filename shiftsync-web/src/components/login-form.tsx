@@ -1,7 +1,6 @@
 'use client';
 
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import axios from 'axios';
@@ -17,11 +16,12 @@ import {
 import {
   Field,
   FieldDescription,
+  FieldError,
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { loginSchema, type LoginInput } from '@/lib/validations/auth';
+import type { LoginInput } from '@/lib/validations/auth';
 import { useAuthStore } from '@/lib/stores/auth.store';
 import { apiClient } from '@/lib/api/client/client';
 import type { LoginResponse } from '@/types/auth';
@@ -31,10 +31,13 @@ export interface LoginFormProps {
   className?: string;
 }
 
-export function LoginForm({ className, ...props }: LoginFormProps & React.ComponentProps<'div'>) {
+export function LoginForm({
+  className,
+  ...props
+}: LoginFormProps & React.ComponentProps<'div'>) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') ?? '/';
+  const returnUrl = searchParams.get('returnUrl') ?? '/dashboard';
   const setAuth = useAuthStore((s) => s.setAuth);
 
   const {
@@ -43,8 +46,9 @@ export function LoginForm({ className, ...props }: LoginFormProps & React.Compon
     formState: { errors, isSubmitting },
     setError,
   } = useForm<LoginInput>({
-    resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '', rememberMe: true },
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
   });
 
   async function onSubmit(data: LoginInput) {
@@ -56,7 +60,7 @@ export function LoginForm({ className, ...props }: LoginFormProps & React.Compon
       const { accessToken, session } = res.data;
       setAuth(accessToken, session, data.rememberMe ?? true);
       toast.success('Signed in successfully');
-      router.push(returnUrl);
+      router.push('/dashboard');
       router.refresh();
     } catch (err) {
       if (axios.isAxiosError(err)) {
@@ -66,15 +70,21 @@ export function LoginForm({ className, ...props }: LoginFormProps & React.Compon
           err.message;
         const status = err.response?.status;
         if (status === 401) {
-          setError('root', { type: 'manual', message: 'Invalid email or password.' });
+          setError('root', {
+            type: 'manual',
+            message: 'Invalid email or password.',
+          });
         } else {
-          setError('root', { type: 'manual', message: msg || 'Login failed. Please try again.' });
-        }
-        if (msg && !err.response?.data?.message && !err.response?.data?.error) {
-          toast.error(msg);
+          setError('root', {
+            type: 'manual',
+            message: msg || 'Login failed. Please try again.',
+          });
         }
       } else {
-        setError('root', { type: 'manual', message: 'Something went wrong. Please try again.' });
+        setError('root', {
+          type: 'manual',
+          message: 'Something went wrong. Please try again.',
+        });
       }
     }
   }
@@ -87,42 +97,51 @@ export function LoginForm({ className, ...props }: LoginFormProps & React.Compon
           <CardDescription>Sign in with your email and password</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <FieldGroup>
               {errors.root && (
                 <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
                   {errors.root.message}
                 </div>
               )}
-              <Field>
+
+              <Field data-invalid={!!errors.email}>
                 <FieldLabel htmlFor="email">Email</FieldLabel>
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
-                  {...register('email')}
                   aria-invalid={!!errors.email}
-                  className={errors.email ? 'border-red-500' : ''}
+                  {...register('email', {
+                    required: 'Email is required',
+                    pattern: {
+                      value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                      message: 'Enter a valid email address',
+                    },
+                  })}
                 />
-                {errors.email && (
-                  <p className="text-sm text-red-400">{errors.email.message}</p>
-                )}
+                <FieldError errors={[errors.email]} />
               </Field>
-              <Field>
+
+              <Field data-invalid={!!errors.password}>
                 <FieldLabel htmlFor="password">Password</FieldLabel>
                 <Input
                   id="password"
                   type="password"
                   autoComplete="current-password"
-                  {...register('password')}
                   aria-invalid={!!errors.password}
-                  className={errors.password ? 'border-red-500' : ''}
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: {
+                      value: 6,
+                      message: 'Password must be at least 6 characters',
+                    },
+                  })}
                 />
-                {errors.password && (
-                  <p className="text-sm text-red-400">{errors.password.message}</p>
-                )}
+                <FieldError errors={[errors.password]} />
               </Field>
+
               <Field>
                 <div className="flex items-center gap-2">
                   <input
@@ -139,11 +158,10 @@ export function LoginForm({ className, ...props }: LoginFormProps & React.Compon
                   Extends how long you stay signed in
                 </FieldDescription>
               </Field>
-              <Field>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? 'Signing in…' : 'Sign in'}
-                </Button>
-              </Field>
+
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? 'Signing in…' : 'Sign in'}
+              </Button>
             </FieldGroup>
           </form>
         </CardContent>

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 
 import { useAuthStore } from '@/lib/stores/auth.store';
 
@@ -11,11 +11,14 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
   if (token) {
+    const headers =
+      config.headers && !(config.headers instanceof AxiosHeaders)
+        ? new AxiosHeaders(config.headers)
+        : (config.headers as AxiosHeaders | undefined) ?? new AxiosHeaders();
+
+    headers.set('Authorization', `Bearer ${token}`);
     // eslint-disable-next-line no-param-reassign
-    config.headers = {
-      ...(config.headers ?? {}),
-      Authorization: `Bearer ${token}`,
-    };
+    config.headers = headers;
   }
   return config;
 });

@@ -140,14 +140,8 @@ export function AssignStaffModal({
         (w) => w.type === 'overtime_approaching' || w.type === 'overtime_exceeded',
       );
       if (overtimeWarning && assignment?.id) {
-        const projectedHours =
-          'projectedWeeklyHours' in overtimeWarning
-            ? overtimeWarning.projectedWeeklyHours
-            : 0;
-        const estimatedCost =
-          'estimatedOvertimeCost' in overtimeWarning
-            ? (overtimeWarning as { estimatedOvertimeCost?: number }).estimatedOvertimeCost
-            : undefined;
+        const projectedHours = overtimeWarning.projectedWeeklyHours ?? 0;
+        const estimatedCost = overtimeWarning.estimatedOvertimeCost ?? 0;
         const userName = users.find((u) => u.id === userId);
         const name = userName ? `${userName.firstName} ${userName.lastName}` : 'Staff';
         showOvertimeWarning({

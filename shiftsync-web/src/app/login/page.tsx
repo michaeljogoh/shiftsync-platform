@@ -1,8 +1,8 @@
-'use client';
-
-import Link from 'next/link';
-import { LoginForm } from '@/components/login-form';
-import { GalleryVerticalEndIcon } from 'lucide-react';
+import React from "react";
+import Link from "next/link";
+import { LoginForm } from "@/components/login-form";
+import { GalleryVerticalEndIcon } from "lucide-react";
+import { Suspense } from "react";
 
 export default function LoginPage() {
   return (
@@ -17,7 +17,9 @@ export default function LoginPage() {
           </div>
           ShiftSync
         </Link>
-        <LoginForm />
+        <Suspense fallback={<div>Loading...</div>}>
+          <LoginForm />
+        </Suspense>
       </div>
     </div>
   );

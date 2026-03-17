@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQueryClient, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import { useNotificationsStore } from '@/lib/stores/notifications.store';
@@ -12,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+
 
 const PAGE_SIZE = 25;
 
@@ -57,18 +58,19 @@ export function NotificationsClient() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<NotificationItem[], Error>({
     queryKey: queryKeys.notifications.all(),
-    queryFn: ({ pageParam }) => fetchNotificationsPage(pageParam),
-    initialPageParam: 0,
+    queryFn: ({ pageParam }) => fetchNotificationsPage(pageParam as number),
+    initialPageParam: 0 as number,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length >= PAGE_SIZE ? allPages.length * PAGE_SIZE : undefined,
   });
 
-  const notifications = useMemo(
-    () => (data?.pages ?? []).flat(),
-    [data?.pages],
-  );
+  const pages =
+    data && Array.isArray((data as any).pages)
+      ? ((data as any).pages as NotificationItem[][])
+      : [];
+  const notifications = useMemo(() => pages.flat(), [pages]);
 
   const { data: unreadCount, isLoading: countLoading } = useQuery({
     queryKey: queryKeys.notifications.unreadCount(),
@@ -89,7 +91,7 @@ export function NotificationsClient() {
     }
   };
 
-  const isInitialLoading = listLoading && !data?.pages?.length;
+  const isInitialLoading = listLoading && pages.length === 0;
 
   if (isInitialLoading) {
     return (

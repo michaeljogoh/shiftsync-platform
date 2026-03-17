@@ -45,6 +45,8 @@ export interface AssignmentValidationResult {
   >;
 }
 
+type AssignmentWarning = NonNullable<AssignmentValidationResult['warnings']>[number];
+
 @Injectable()
 export class AssignmentsService {
   constructor(
@@ -529,7 +531,7 @@ export class AssignmentsService {
   ): Promise<{
     hardBlock: boolean;
     message?: string;
-    warning?: AssignmentValidationResult['warnings'][0];
+    warning?: AssignmentWarning;
   }> {
     const durationHours =
       (shift.endAt.getTime() - shift.startAt.getTime()) / (60 * 60 * 1000);
@@ -638,7 +640,7 @@ export class AssignmentsService {
   ): Promise<{
     valid: boolean;
     message?: string;
-    warning?: AssignmentValidationResult['warnings'][0];
+    warning?: AssignmentWarning;
   }> {
     const tz =
       (shift as Shift & { location?: { ianaTimezone: string } }).location

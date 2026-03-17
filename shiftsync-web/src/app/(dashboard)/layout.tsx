@@ -3,6 +3,7 @@
 import type React from 'react';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useSocketSync } from '@/lib/socket/use-socket-sync';
 import { ConstraintFeedbackRoot } from '@/components/constraint-feedback/ConstraintFeedbackRoot';
 import { NotificationsStoreSync } from '@/components/notifications-store-sync';
@@ -11,6 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useSocketSync();
 
   return (
+    <TooltipProvider>
     <SidebarProvider>
       <NotificationsStoreSync />
       <ConstraintFeedbackRoot />
@@ -34,6 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </SidebarInset>
     </SidebarProvider>
+    </TooltipProvider>
   );
 }
 

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Sheet,
+  Sheet as ShiftSheetRoot,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -74,7 +74,7 @@ export function ShiftDetailSheet({
   }, [open, shift, onAssign, openAssignIfUnderstaffed]);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <ShiftSheetRoot open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Shift details</SheetTitle>
@@ -103,14 +103,14 @@ export function ShiftDetailSheet({
               const slotsOpen = Math.max(0, needed - assigned);
               const startAt = shift.startAt ? new Date(shift.startAt) : null;
               const now = new Date();
-              const msUntil = startAt ? startAt.getTime() - now.getTime();
-              const hoursUntil = msUntil > 0 ? msUntil / (60 * 60 * 1000) : 0;
+              const msUntil = startAt ? startAt.getTime() - now.getTime() : 0;
+              const hoursUntil = (msUntil > 0) ? msUntil / (60 * 60 * 1000) : 0;
               const countdownLabel =
-                hoursUntil >= 24
+                (hoursUntil >= 24)
                   ? `${Math.floor(hoursUntil / 24)} days`
-                  : hoursUntil >= 1
+                  : (hoursUntil >= 1)
                     ? `${Math.floor(hoursUntil)} hour${Math.floor(hoursUntil) !== 1 ? 's' : ''}`
-                    : hoursUntil > 0
+                    : (hoursUntil > 0)
                       ? `${Math.max(1, Math.ceil(hoursUntil * 60))} min`
                       : null;
               if (slotsOpen > 0 && countdownLabel) {
@@ -270,6 +270,6 @@ export function ShiftDetailSheet({
           </div>
         )}
       </SheetContent>
-    </Sheet>
+    </ShiftSheetRoot>
   );
 }

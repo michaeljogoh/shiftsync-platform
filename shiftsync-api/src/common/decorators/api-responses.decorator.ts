@@ -22,30 +22,28 @@ const defaultConflict = () =>
 export function ApiCreateResponses(description = 'Resource created') {
   return function (
     target: object,
-    propertyKey: string,
+    propertyKey: string | symbol,
     descriptor: PropertyDescriptor,
   ) {
-    ApiCreatedResponse({ description })(
-      target,
-      propertyKey,
-    );
-    defaultBadRequest()(target, propertyKey);
-    defaultUnauthorized()(target, propertyKey);
-    defaultForbidden()(target, propertyKey);
-    defaultConflict()(target, propertyKey);
-  };
+    ApiCreatedResponse({ description })(target, propertyKey, descriptor);
+    defaultBadRequest()(target, propertyKey, descriptor);
+    defaultUnauthorized()(target, propertyKey, descriptor);
+    defaultForbidden()(target, propertyKey, descriptor);
+    defaultConflict()(target, propertyKey, descriptor);
+  } as MethodDecorator;
 }
 
 /** Apply common response decorators for a get-by-id style endpoint */
 export function ApiGetResponses() {
   return function (
     target: object,
-    propertyKey: string,
+    propertyKey: string | symbol,
+    descriptor: PropertyDescriptor,
   ) {
-    defaultNotFound()(target, propertyKey);
-    defaultUnauthorized()(target, propertyKey);
-    defaultForbidden()(target, propertyKey);
-  };
+    defaultNotFound()(target, propertyKey, descriptor);
+    defaultUnauthorized()(target, propertyKey, descriptor);
+    defaultForbidden()(target, propertyKey, descriptor);
+  } as MethodDecorator;
 }
 
 /** Single decorators for ad-hoc use */
