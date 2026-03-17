@@ -26,9 +26,9 @@ export interface SwapRequestSummary {
   targetUser?: { id: string; firstName: string; lastName: string; email: string } | null;
   initiatorAssignment?: {
     id: string;
-    shift?: { id: string; title: string | null; startAt: string; endAt: string; location?: { name: string } };
+    shift?: { id: string; title: string | null; startAt: string; endAt: string; location?: { name: string; ianaTimezone?: string } };
   };
-  targetAssignment?: { id: string; shift?: { id: string; startAt: string; endAt: string } } | null;
+  targetAssignment?: { id: string; shift?: { id: string; startAt: string; endAt: string; location?: { name: string; ianaTimezone?: string } } } | null;
 }
 
 export async function fetchSwaps(params: {

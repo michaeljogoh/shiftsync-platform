@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { AvailabilityWindow, AvailabilityException } from '@/lib/api/server/availability';
+import { validateAvailabilityWindows } from '@/lib/validations/availability';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SLOTS_PER_DAY = 48; // 30-min from 00:00 to 24:00
@@ -130,19 +132,25 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
 
   const handleSave = useCallback(async () => {
     const windows = gridToWindows(displayGrid);
+    const effectiveFrom = new Date().toISOString().slice(0, 10);
+    const validated = validateAvailabilityWindows(windows, effectiveFrom);
+    if (!validated.success) {
+      const msg = validated.error.errors[0]?.message ?? 'Invalid availability window';
+      toast.error(msg);
+      return;
+    }
     setSaving(true);
     try {
-      const effectiveFrom = new Date().toISOString().slice(0, 10);
       const existing = data?.windows ?? [];
       for (const w of existing) {
         await apiClient.delete(`/users/${userId}/availability/windows/${w.id}`);
       }
-      for (const w of windows) {
+      for (const w of validated.data) {
         await apiClient.post(`/users/${userId}/availability/windows`, {
           dayOfWeek: w.dayOfWeek,
           startTime: w.startTime,
           endTime: w.endTime,
-          effectiveFrom,
+          effectiveFrom: w.effectiveFrom,
         });
       }
       queryClient.invalidateQueries({ queryKey: queryKeys.users.availability(userId) });
@@ -160,6 +168,9 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
 
   return (
     <div className="space-y-3">
+      <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300">
+        Your availability windows are stored as time-of-day references and will be interpreted in each location&apos;s timezone. For example, 9 AM availability means 9 AM Eastern at your Eastern locations and 9 AM Pacific at your Pacific locations.
+      </div>
       <p className="text-xs text-slate-500">
         Click or drag to mark available blocks (30-min slots). Save to update.
       </p>

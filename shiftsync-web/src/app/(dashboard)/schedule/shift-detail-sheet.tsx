@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
+import { formatShiftTimeRange } from '@/lib/format-shift-time';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { PencilIcon, UserPlusIcon, HistoryIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -38,13 +39,6 @@ async function fetchShiftDetail(id: string) {
   return data;
 }
 
-function formatDateTime(iso: string, tz?: string) {
-  return new Date(iso).toLocaleString('en-US', {
-    timeZone: tz ?? 'UTC',
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
-}
 
 export function ShiftDetailSheet({
   shiftId,
@@ -115,8 +109,23 @@ export function ShiftDetailSheet({
               <div>
                 <span className="text-slate-500">Time (location)</span>
                 <p className="font-medium text-slate-100">
-                  {formatDateTime(shift.startAt, shift.location?.ianaTimezone)} –{' '}
-                  {formatDateTime(shift.endAt, shift.location?.ianaTimezone)}
+                  {(() => {
+                    const tz = shift.location?.ianaTimezone ?? 'UTC';
+                    const { primary, secondary } = formatShiftTimeRange({
+                      startAt: shift.startAt,
+                      endAt: shift.endAt,
+                      locationTimezone: tz,
+                      showUserLocal: true,
+                    });
+                    return (
+                      <>
+                        {primary}
+                        {secondary && (
+                          <span className="ml-1 text-slate-500 font-normal">{secondary}</span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </p>
               </div>
               <div>

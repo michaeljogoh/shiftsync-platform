@@ -3,9 +3,13 @@ import { persist } from 'zustand/middleware';
 
 import type { Role, Session } from '@/types/auth';
 import { setAuthCookies, clearAuthCookies } from '@/lib/auth/client-cookies';
+import { closeSocket } from '@/lib/socket';
 
 // ─── Types (mirror backend exactly) ───────────────────────────────────────
 // Role, Permission, SessionUser, Session are in @/types/auth
+//
+// Critical: session.features is the only place the frontend checks permissions.
+// Never duplicate role/permission checks in component logic. Always use can() / is() from this store.
 
 export type Permission = string;
 
@@ -40,6 +44,7 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       clearAuth() {
+        closeSocket();
         set({ accessToken: null, session: null, isAuthenticated: false });
         clearAuthCookies();
       },
