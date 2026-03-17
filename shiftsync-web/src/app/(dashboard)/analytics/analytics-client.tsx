@@ -40,6 +40,7 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
   const [dateRange, setDateRange] = useState(() => getDateRange(14));
   const [fairnessLocationId, setFairnessLocationId] = useState<string>('');
   const [fairnessPeriod, setFairnessPeriod] = useState(() => getDateRange(28));
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
 
   const { data: overtime = [], isLoading: overtimeLoading, isError: overtimeError, error: overtimeErr, refetch: refetchOvertime } = useQuery({
     queryKey: queryKeys.analytics.overtime(locationId || undefined, weekStart),
@@ -133,7 +134,9 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
       <Card className="border-slate-800 bg-slate-900/50">
         <CardHeader>
           <CardTitle className="text-base">Overtime dashboard</CardTitle>
-          <CardDescription>Projected hours this week (red &gt;40h, amber &gt;35h)</CardDescription>
+          <CardDescription>
+            Projected hours this week (red &gt;40h, amber &gt;35h). Reflects projected overtime before the week starts.
+          </CardDescription>
           <input
             type="date"
             className="mt-2 rounded border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-200"
@@ -146,26 +149,28 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
             <p className="text-sm text-slate-400">No staff over 35h this week.</p>
           )}
           {overtimeWithCost.length > 0 && (
-            <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_80px_80px_100px] gap-2 text-xs font-medium text-slate-400">
-                <span>Staff</span>
-                <span>Scheduled</span>
-                <span>Overtime</span>
-                <span>Est. cost</span>
-              </div>
-              {overtimeWithCost.map((row: { userId: string; name: string; projectedHours: number; overtimeHours: number; cost: number }) => (
-                <div
-                  key={row.userId}
-                  className={`grid grid-cols-[1fr_80px_80px_100px] gap-2 rounded px-2 py-1 text-sm ${
-                    row.projectedHours > 40 ? 'bg-red-950/30' : row.projectedHours > 35 ? 'bg-amber-950/20' : ''
-                  }`}
-                >
-                  <span className="text-slate-200">{row.name}</span>
-                  <span>{row.projectedHours}h</span>
-                  <span>{row.overtimeHours > 0 ? `${row.overtimeHours}h` : '—'}</span>
-                  <span>{row.cost > 0 ? `$${row.cost.toFixed(0)}` : '—'}</span>
+            <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
+              <div className="min-w-[520px] space-y-2">
+                <div className="grid grid-cols-[1fr_80px_80px_100px] gap-2 text-xs font-medium text-slate-400">
+                  <span>Staff</span>
+                  <span>Scheduled</span>
+                  <span>Overtime</span>
+                  <span>Est. cost</span>
                 </div>
-              ))}
+                {overtimeWithCost.map((row: { userId: string; name: string; projectedHours: number; overtimeHours: number; cost: number }) => (
+                  <div
+                    key={row.userId}
+                    className={`grid grid-cols-[1fr_80px_80px_100px] gap-2 rounded px-2 py-1 text-sm ${
+                      row.projectedHours > 40 ? 'bg-red-950/30' : row.projectedHours > 35 ? 'bg-amber-950/20' : ''
+                    }`}
+                  >
+                    <span className="text-slate-200">{row.name}</span>
+                    <span>{row.projectedHours}h</span>
+                    <span>{row.overtimeHours > 0 ? `${row.overtimeHours}h` : '—'}</span>
+                    <span>{row.cost > 0 ? `$${row.cost.toFixed(0)}` : '—'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </CardContent>
@@ -225,7 +230,9 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
       <Card className="border-slate-800 bg-slate-900/50">
         <CardHeader>
           <CardTitle className="text-base">Fairness report</CardTitle>
-          <CardDescription>Premium shift ratio and fairness score</CardDescription>
+          <CardDescription>
+            Premium shift ratio vs team average, fairness score, and deviation. Select a staff member and date range to view details.
+          </CardDescription>
           <div className="mt-2 flex flex-wrap gap-2">
             <select
               className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
@@ -236,6 +243,19 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
               {locations.map((loc) => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+              value={selectedStaffId}
+              onChange={(e) => setSelectedStaffId(e.target.value)}
+              title="Select staff to view premium vs team average and deviation"
+            >
+              <option value="">All staff</option>
+              {(fairness?.staff ?? []).map((s: { userId: string; name: string }) => (
+                <option key={s.userId} value={s.userId}>
+                  {s.name}
                 </option>
               ))}
             </select>
@@ -268,29 +288,60 @@ export function AnalyticsClient({ locations }: SwapsClientProps) {
             <div className="space-y-3">
               <p className="text-sm">
                 Fairness score: <strong className="text-slate-100">{Math.round((fairness.fairnessScore ?? 0) * 100)}%</strong>
+                {' '}
+                · Team average premium ratio: <strong className="text-slate-100">{((fairness.averagePremiumRatio ?? 0) * 100).toFixed(0)}%</strong>
               </p>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700 text-left text-slate-400">
-                    <th className="py-1">Staff</th>
-                    <th className="py-1">Total shifts</th>
-                    <th className="py-1">Premium</th>
-                    <th className="py-1">Ratio</th>
-                    <th className="py-1">Flagged</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(fairness.staff ?? []).map((s: { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; flagged?: boolean }) => (
-                    <tr key={s.userId} className="border-b border-slate-800">
-                      <td className="py-1 text-slate-200">{s.name}</td>
-                      <td className="py-1">{s.totalShiftsAssigned}</td>
-                      <td className="py-1">{s.premiumShiftsAssigned}</td>
-                      <td className="py-1">{(s.premiumRatio * 100).toFixed(0)}%</td>
-                      <td className="py-1">{s.flagged ? '⚠️' : '—'}</td>
+              {selectedStaffId && (() => {
+                const staff = (fairness.staff ?? []).find((s: { userId: string }) => s.userId === selectedStaffId) as
+                  | { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; deviationFromAverage: number; flagged?: boolean }
+                  | undefined;
+                if (!staff) return null;
+                const devPct = (staff.deviationFromAverage * 100).toFixed(0);
+                return (
+                  <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 text-sm">
+                    <h4 className="font-medium text-slate-200">{staff.name}</h4>
+                    <p className="mt-1 text-slate-400">
+                      Premium shifts: <strong className="text-slate-100">{staff.premiumShiftsAssigned}</strong>
+                      {' '}(team avg: {((fairness.averagePremiumRatio ?? 0) * 100).toFixed(0)}% ratio)
+                    </p>
+                    <p className="text-slate-400">
+                      Deviation from average: <strong className={staff.deviationFromAverage > 0 ? 'text-amber-400' : 'text-slate-100'}>{devPct}%</strong>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      Premium shift history (which Fri/Sat nights) is reflected in the premium count above; detailed history is in the audit trail.
+                    </p>
+                  </div>
+                );
+              })()}
+              <div className="overflow-x-auto -mx-1 px-1 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[560px] text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-left text-slate-400">
+                      <th className="py-1">Staff</th>
+                      <th className="py-1">Total shifts</th>
+                      <th className="py-1">Premium</th>
+                      <th className="py-1">Ratio</th>
+                      <th className="py-1">Deviation</th>
+                      <th className="py-1">Flagged</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(fairness.staff ?? []).map((s: { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; deviationFromAverage?: number; flagged?: boolean }) => (
+                      <tr
+                        key={s.userId}
+                        className={`border-b border-slate-800 ${s.userId === selectedStaffId ? 'bg-slate-700/30' : ''}`}
+                      >
+                        <td className="py-1 text-slate-200">{s.name}</td>
+                        <td className="py-1">{s.totalShiftsAssigned}</td>
+                        <td className="py-1">{s.premiumShiftsAssigned}</td>
+                        <td className="py-1">{(s.premiumRatio * 100).toFixed(0)}%</td>
+                        <td className="py-1">{s.deviationFromAverage != null ? `${(s.deviationFromAverage * 100).toFixed(0)}%` : '—'}</td>
+                        <td className="py-1">{s.flagged ? '⚠️' : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </CardContent>

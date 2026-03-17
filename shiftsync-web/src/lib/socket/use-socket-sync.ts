@@ -6,9 +6,10 @@ import { useAuthStore } from '@/lib/stores/auth.store';
 import { getSocket } from '@/lib/socket';
 import { useOnDutyStore } from '@/lib/stores/on-duty.store';
 import { useNotificationsStore } from '@/lib/stores/notifications.store';
+import { toast } from 'sonner';
 import { queryKeys } from '@/lib/query-keys';
 import { RealtimeEvents } from '@/lib/socket/realtime-events';
-import type { DutyUpdatePayload } from '@/types/socket';
+import type { DutyUpdatePayload, AssignmentConflictPayload } from '@/types/socket';
 
 export function useSocketSync(): void {
   const queryClient = useQueryClient();
@@ -51,9 +52,11 @@ export function useSocketSync(): void {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() });
     });
-    socket.on(RealtimeEvents.ASSIGNMENT_CONFLICT, () => {
+    socket.on(RealtimeEvents.ASSIGNMENT_CONFLICT, (payload: AssignmentConflictPayload) => {
       queryClient.invalidateQueries({ queryKey: ['assignments'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() });
+      const msg = payload?.message ?? 'Someone was just assigned to another shift.';
+      toast.warning(`${msg} Open the assignment form to see alternatives.`);
     });
     socket.on(RealtimeEvents.SWAP_REQUEST_RECEIVED, () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.swaps.all() });

@@ -6,8 +6,8 @@ const ROWS = 8;
 
 export function StaffTableSkeleton() {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-800">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+      <table className="w-full min-w-[900px] text-sm">
         <thead>
           <tr className="border-b border-slate-700 bg-slate-900/70">
             <th className="px-3 py-2 text-left font-medium text-slate-300">Staff</th>

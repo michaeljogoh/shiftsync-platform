@@ -1,6 +1,7 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
 import type { UserSummary } from '@/lib/api/server/users';
+import type { AvailabilityWindow } from '@/lib/api/server/availability';
 import {
   useConstraintFeedbackStore,
   type ConstraintViolationState,
@@ -20,6 +22,11 @@ import {
 import type { ConstraintErrorResponse } from '@/types/constraint-feedback';
 import type { AssignmentSuccessResponse } from '@/types/constraint-feedback';
 import { AxiosError } from 'axios';
+import { getTimezoneAbbreviation } from '@/lib/format-shift-time';
+import {
+  formatAvailabilityInShiftTz,
+  isAvailableForShift,
+} from '@/lib/availability-for-shift';
 
 interface AssignStaffModalProps {
   shift: ShiftSummary | null;
@@ -66,6 +73,51 @@ export function AssignStaffModal({
     queryFn: () => fetchUsers(shift?.locationId, shift?.requiredSkillId),
     enabled: open && !!shift,
   });
+
+  const tz = shift?.location?.ianaTimezone ?? 'UTC';
+  const tzAbbrev = shift ? getTimezoneAbbreviation(tz, new Date(shift.startAt)) : '';
+
+  const availabilityQueries = useQueries({
+    queries: (users.slice(0, 20) as UserSummary[]).map((u) => ({
+      queryKey: [...queryKeys.users.availability(u.id), shift?.id ?? ''],
+      queryFn: async () => {
+        const { data } = await apiClient.get<{ windows: AvailabilityWindow[] }>(
+          `/users/${u.id}/availability`,
+        );
+        return data.windows;
+      },
+      enabled: open && !!shift && !!u.id,
+    })),
+  });
+
+  const availabilityByUserId = useMemo(() => {
+    const map = new Map<string, AvailabilityWindow[]>();
+    users.slice(0, 20).forEach((u, i) => {
+      const w = availabilityQueries[i]?.data;
+      if (w?.length) map.set(u.id, w);
+    });
+    return map;
+  }, [users, availabilityQueries]);
+
+  const sortedUsers = useMemo(() => {
+    if (!shift) return users;
+    const list = [...users];
+    list.sort((a, b) => {
+      const aAvail = availabilityByUserId.get(a.id);
+      const bAvail = availabilityByUserId.get(b.id);
+      const aOk = aAvail
+        ? isAvailableForShift(aAvail, shift.startAt, shift.endAt, tz)
+        : false;
+      const bOk = bAvail
+        ? isAvailableForShift(bAvail, shift.startAt, shift.endAt, tz)
+        : false;
+      if (aOk !== bOk) return aOk ? -1 : 1;
+      const aName = `${a.firstName} ${a.lastName}`;
+      const bName = `${b.firstName} ${b.lastName}`;
+      return aName.localeCompare(bName);
+    });
+    return list;
+  }, [users, shift, availabilityByUserId, tz]);
 
   const runAssign = async (
     userId: string,
@@ -124,6 +176,7 @@ export function AssignStaffModal({
       const message = body.message ?? 'Assignment could not be completed.';
       const suggestions = body.suggestions ?? [];
       const is7thDay = message.toLowerCase().includes('7th consecutive day');
+      const isConcurrencyConflict = (err.response?.data as { error?: string })?.error === 'ConcurrencyConflict';
 
       if (is7thDay) {
         const u = users.find((x) => x.id === userId);
@@ -138,7 +191,11 @@ export function AssignStaffModal({
         return;
       }
 
-      const title = attemptedName ? `Cannot assign ${attemptedName}` : 'Cannot assign staff';
+      const title = isConcurrencyConflict && attemptedName
+        ? `${attemptedName} was just assigned to another shift. Here are alternatives:`
+        : attemptedName
+          ? `Cannot assign ${attemptedName}`
+          : 'Cannot assign staff';
       const state: ConstraintViolationState = {
         title,
         reason: message,
@@ -165,29 +222,44 @@ export function AssignStaffModal({
         ) : isLoading ? (
           <Skeleton className="h-48 w-full" />
         ) : (
-          <ul className="max-h-80 space-y-1 overflow-auto">
-            {users.map((user) => {
-              const name = `${user.firstName} ${user.lastName}`;
-              const skillNames = user.skills?.map((s) => s.name).join(', ') ?? '—';
-              return (
-                <li
-                  key={user.id}
-                  className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-2"
-                >
-                  <div>
-                    <p className="font-medium text-slate-100">{name}</p>
-                    <p className="text-xs text-slate-400">Skills: {skillNames}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => runAssign(user.id, undefined, name)}
+          <>
+            <p className="text-xs text-slate-400">
+              Available qualified staff (sorted by availability for this shift). Availability is shown in the shift&apos;s location timezone ({tzAbbrev}).
+            </p>
+            <ul className="max-h-80 space-y-1 overflow-auto">
+              {sortedUsers.map((user) => {
+                const name = `${user.firstName} ${user.lastName}`;
+                const skillNames = user.skills?.map((s) => s.name).join(', ') ?? '—';
+                const windows = availabilityByUserId.get(user.id);
+                const availabilityLabel = windows?.length
+                  ? formatAvailabilityInShiftTz(windows, tzAbbrev)
+                  : null;
+                return (
+                  <li
+                    key={user.id}
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-2"
                   >
-                    Assign
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-slate-100">{name}</p>
+                      <p className="text-xs text-slate-400">Skills: {skillNames}</p>
+                      {availabilityLabel != null && (
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Availability: {availabilityLabel}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => runAssign(user.id, undefined, name)}
+                    >
+                      Assign
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </DialogContent>
     </Dialog>

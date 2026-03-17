@@ -10,6 +10,7 @@ const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 export const metadata: Metadata = {
   title: 'ShiftSync',
   description: 'Shift scheduling and workforce management',
+  viewport: { width: 'device-width', initialScale: 1 },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

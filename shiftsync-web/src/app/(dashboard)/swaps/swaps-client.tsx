@@ -116,15 +116,42 @@ export function SwapsClient({ locations }: SwapsClientProps) {
     enabled: createSwapOpen && !!userId,
   });
 
+  const { data: mySwaps = [], isLoading: mySwapsLoading } = useQuery({
+    queryKey: ['swaps', 'my', userId],
+    queryFn: async () => {
+      const { data } = await apiClient.get<SwapRequestSummary[]>(`/users/${userId}/swaps`);
+      return data;
+    },
+    enabled: view === 'staff' && !!userId,
+  });
+
+  const handleCancelRequest = async (swap: SwapRequestSummary) => {
+    setActioning(true);
+    try {
+      await apiClient.patch(`/swaps/${swap.id}/cancel`, {});
+      toast.success('Request cancelled.');
+      queryClient.invalidateQueries({ queryKey: queryKeys.swaps.all() });
+      queryClient.invalidateQueries({ queryKey: ['swaps', 'my', userId] });
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to cancel';
+      toast.error(msg);
+    } finally {
+      setActioning(false);
+    }
+  };
+
+  const canCancelStatuses = ['pending_target', 'pending_manager'];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-slate-50">Swap & Drop Requests</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <RoleGate role={['admin', 'manager']}>
             <Button
               variant={view === 'manager' ? 'secondary' : 'ghost'}
               size="sm"
+              className="min-h-[44px] sm:min-h-0"
               onClick={() => setView('manager')}
             >
               Manager view
@@ -132,6 +159,7 @@ export function SwapsClient({ locations }: SwapsClientProps) {
             <Button
               variant={view === 'staff' ? 'secondary' : 'ghost'}
               size="sm"
+              className="min-h-[44px] sm:min-h-0"
               onClick={() => setView('staff')}
             >
               My requests
@@ -139,13 +167,18 @@ export function SwapsClient({ locations }: SwapsClientProps) {
           </RoleGate>
           <RoleGate role={['staff']}>
             {view !== 'staff' && (
-              <Button variant="ghost" size="sm" onClick={() => setView('staff')}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-[44px] sm:min-h-0"
+                onClick={() => setView('staff')}
+              >
                 My requests
               </Button>
             )}
           </RoleGate>
           {view === 'staff' && userId && (
-            <Button size="sm" onClick={() => setCreateSwapOpen(true)}>
+            <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => setCreateSwapOpen(true)}>
               New request
             </Button>
           )}
@@ -163,7 +196,7 @@ export function SwapsClient({ locations }: SwapsClientProps) {
         <PermissionGate require="swaps:view" fallback={<p className="text-sm text-slate-400">You need permission to view swap requests.</p>}>
           <div className="flex flex-wrap gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
             <select
-              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+              className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
             >
@@ -175,7 +208,7 @@ export function SwapsClient({ locations }: SwapsClientProps) {
               ))}
             </select>
             <select
-              className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+              className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
@@ -230,8 +263,8 @@ export function SwapsClient({ locations }: SwapsClientProps) {
             )
           )}
           {!managerLoading && !managerError && (
-            <div className="overflow-x-auto rounded-lg border border-slate-800">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+              <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-slate-700 bg-slate-900/70">
                     <th className="px-3 py-2 text-left font-medium text-slate-300">Type</th>
@@ -266,11 +299,11 @@ export function SwapsClient({ locations }: SwapsClientProps) {
                       </td>
                       <td className="px-3 py-2">
                         {swap.status === 'pending_manager' && (
-                          <div className="flex gap-1">
-                            <Button size="sm" className="h-7" onClick={() => handleApprove(swap)} disabled={actioning}>
+                          <div className="flex gap-1.5">
+                            <Button size="sm" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => handleApprove(swap)} disabled={actioning}>
                               Approve
                             </Button>
-                            <Button size="sm" variant="outline" className="h-7" onClick={() => setDenyModal(swap)} disabled={actioning}>
+                            <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => setDenyModal(swap)} disabled={actioning}>
                               Deny
                             </Button>
                           </div>
@@ -292,8 +325,65 @@ export function SwapsClient({ locations }: SwapsClientProps) {
       )}
 
       {view === 'staff' && (
-        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-4">
-          <p className="text-sm text-slate-400">My active requests and shifts I can pick up — use Schedule to request swap/drop from an assignment.</p>
+        <div className="space-y-3">
+          <p className="text-sm text-slate-400">My active requests. Cancel before manager approval to revert. Your original assignment stays unchanged until the request is approved.</p>
+          {mySwapsLoading ? (
+            <Skeleton className="h-24 w-full rounded-lg" />
+          ) : mySwaps.length === 0 ? (
+            <div className="rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-8 text-center">
+              <p className="text-sm font-medium text-slate-300">No pending requests</p>
+              <p className="mt-1 text-xs text-slate-500">Create a swap or drop request from the Schedule or use the button above.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-700 bg-slate-900/70">
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Type</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">My shift</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Status</th>
+                    <th className="px-3 py-2 text-left font-medium text-slate-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mySwaps.map((swap) => (
+                    <tr key={swap.id} className="border-b border-slate-800">
+                      <td className="px-3 py-2">
+                        <Badge variant="outline">{swap.type}</Badge>
+                      </td>
+                      <td className="px-3 py-2 text-slate-200">
+                        {swap.initiatorAssignment?.shift
+                          ? formatShiftLabel(swap.initiatorAssignment.shift)
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge variant={swap.status === 'pending_manager' || swap.status === 'pending_target' ? 'default' : 'secondary'}>
+                          {swap.status}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        {canCancelStatuses.includes(swap.status) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="min-h-[44px] sm:min-h-0"
+                            onClick={() => handleCancelRequest(swap)}
+                            disabled={actioning}
+                          >
+                            Cancel request
+                          </Button>
+                        )}
+                        {swap.status === 'approved' && <span className="text-slate-500">Approved</span>}
+                        {swap.status === 'rejected' && <span className="text-slate-500">Rejected</span>}
+                        {swap.status === 'cancelled' && <span className="text-slate-500">Cancelled</span>}
+                        {swap.status === 'expired' && <span className="text-slate-500">Expired</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
