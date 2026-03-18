@@ -1,0 +1,393 @@
+'use client';
+
+import { useState, useMemo, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { apiClient } from '@/lib/api/client/client';
+import { queryKeys } from '@/lib/query-keys';
+import type { UserSummary } from '@/lib/api/server/users';
+import type { LocationSummary } from '@/lib/api/server/locations';
+import type { SkillSummary } from '@/lib/api/server/skills';
+import { FullPageError } from '@/components/shared/FullPageError';
+import { PermissionDenied } from '@/components/shared/PermissionDenied';
+import { StaffTableSkeleton } from '@/components/shared/StaffTableSkeleton';
+import { PermissionGate } from '@/components/shared/PermissionGate';
+import { RoleGate } from '@/components/shared/RoleGate';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
+import { StaffDetailSheet } from './staff-detail-sheet';
+import { PlusIcon } from 'lucide-react';
+
+interface CreateUserForm {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'manager' | 'staff';
+  password: string;
+}
+
+async function fetchUsersClient(filters: {
+  role?: string;
+  locationId?: string;
+  skillId?: string;
+}): Promise<UserSummary[]> {
+  const params = new URLSearchParams();
+  if (filters.role) params.set('role', filters.role);
+  if (filters.locationId) params.set('locationId', filters.locationId);
+  if (filters.skillId) params.set('skillId', filters.skillId);
+  const { data } = await apiClient.get<UserSummary[]>(`/users?${params.toString()}`);
+  return data;
+}
+
+interface StaffClientProps {
+  locations: LocationSummary[];
+  skills: SkillSummary[];
+}
+
+export function StaffClient({ locations, skills }: StaffClientProps) {
+  const queryClient = useQueryClient();
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [locationFilter, setLocationFilter] = useState<string>('');
+  const [skillFilter, setSkillFilter] = useState<string>('');
+  const [activeFilter, setActiveFilter] = useState<boolean | 'all'>('all');
+  const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [staffPage, setStaffPage] = useState(1);
+  const STAFF_PAGE_SIZE = 10;
+
+  const { register: regCreate, handleSubmit: handleCreate, reset: resetCreate, formState: { isSubmitting: createSubmitting, errors: createErrors } } = useForm<CreateUserForm>({
+    defaultValues: { role: 'staff' },
+  });
+
+  async function onCreateUser(data: CreateUserForm) {
+    try {
+      await apiClient.post('/users', data);
+      toast.success('User created. They can log in with the provided email and password.');
+      setCreateOpen(false);
+      resetCreate();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all({}) });
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create user');
+    }
+  }
+
+  const filters = useMemo(
+    () => ({
+      role: roleFilter || undefined,
+      locationId: locationFilter || undefined,
+      skillId: skillFilter || undefined,
+    }),
+    [roleFilter, locationFilter, skillFilter],
+  );
+
+  const { data: users = [], isLoading, isError, error, refetch } = useQuery({
+    queryKey: queryKeys.users.all(filters),
+    queryFn: () => fetchUsersClient(filters),
+  });
+
+  const statusCode = (error as { response?: { status?: number } })?.response?.status;
+
+  const filtered = useMemo(() => {
+    if (activeFilter === 'all') return users;
+    return users.filter((u) => u.isActive === activeFilter);
+  }, [users, activeFilter]);
+
+  const { totalPages: staffTotalPages, paginate: paginateStaff } = usePagination(filtered, STAFF_PAGE_SIZE);
+  const pagedStaff = paginateStaff(staffPage);
+
+  const safeSetStaffPage = (p: number) => {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / STAFF_PAGE_SIZE));
+    setStaffPage(Math.min(p, maxPage));
+  };
+
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return {
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+    };
+  }, []);
+
+  const pagedUserIds = useMemo(() => pagedStaff.map((u) => u.id), [pagedStaff]);
+
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>({});
+
+  const { data: hoursMap } = useQuery({
+    queryKey: ['staff-weekly-hours', pagedUserIds, weekRange.startDate],
+    queryFn: async () => {
+      const results: Record<string, number> = {};
+      await Promise.all(
+        pagedUserIds.map(async (uid) => {
+          try {
+            const { data: assignments } = await apiClient.get<
+              { shift?: { startAt: string; endAt: string } }[]
+            >(`/users/${uid}/assignments?startDate=${weekRange.startDate}&endDate=${weekRange.endDate}`);
+            let totalMs = 0;
+            for (const a of assignments) {
+              if (!a.shift) continue;
+              totalMs += new Date(a.shift.endAt).getTime() - new Date(a.shift.startAt).getTime();
+            }
+            results[uid] = Math.round((totalMs / 3_600_000) * 10) / 10;
+          } catch {
+            results[uid] = 0;
+          }
+        }),
+      );
+      return results;
+    },
+    enabled: pagedUserIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (hoursMap) setWeeklyHours((prev) => ({ ...prev, ...hoursMap }));
+  }, [hoursMap]);
+
+  const openDetail = (user: UserSummary) => {
+    setSelectedUser(user);
+    setDetailOpen(true);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold text-foreground">Staff</h1>
+        <RoleGate role={['admin']}>
+          <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="mr-1.5 size-4" /> Add user
+          </Button>
+        </RoleGate>
+      </div>
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create user</DialogTitle>
+            <DialogDescription>Add a new staff member, manager, or admin to the platform.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate(onCreateUser)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">First name *</label>
+                <Input {...regCreate('firstName', { required: true })} />
+                {createErrors.firstName && <p className="text-xs text-destructive">Required</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Last name *</label>
+                <Input {...regCreate('lastName', { required: true })} />
+                {createErrors.lastName && <p className="text-xs text-destructive">Required</p>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Email *</label>
+              <Input {...regCreate('email', { required: true })} type="email" placeholder="user@coastaleats.com" />
+              {createErrors.email && <p className="text-xs text-destructive">Required</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Password *</label>
+              <Input {...regCreate('password', { required: true, minLength: 8 })} type="password" placeholder="Min 8 characters" />
+              {createErrors.password && <p className="text-xs text-destructive">Min 8 characters required</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Role *</label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground" {...regCreate('role')}>
+                <option value="staff">Staff</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createSubmitting}>Create user</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <PermissionGate require="users:view" fallback={<p className="text-sm text-muted-foreground">You don&apos;t have permission to view the staff list.</p>}>
+        <div className="flex flex-wrap gap-3 rounded-lg border border-border bg-card p-3">
+          <select
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setStaffPage(1); }}
+          >
+            <option value="">All roles</option>
+            <option value="admin">Admin</option>
+            <option value="manager">Manager</option>
+            <option value="staff">Staff</option>
+          </select>
+          <select
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
+            value={locationFilter}
+            onChange={(e) => { setLocationFilter(e.target.value); setStaffPage(1); }}
+          >
+            <option value="">All locations</option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
+            value={skillFilter}
+            onChange={(e) => { setSkillFilter(e.target.value); setStaffPage(1); }}
+          >
+            <option value="">All skills</option>
+            {skills.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
+            value={activeFilter === 'all' ? 'all' : activeFilter ? 'active' : 'inactive'}
+            onChange={(e) => {
+              setActiveFilter(
+                e.target.value === 'all' ? 'all' : e.target.value === 'active',
+              );
+              setStaffPage(1);
+            }}
+          >
+            <option value="all">All status</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        {isLoading && <StaffTableSkeleton />}
+        {isError && (
+          <>
+            {statusCode === 403 ? (
+              <PermissionDenied />
+            ) : (
+              <FullPageError
+                message={(error as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to load staff. Please try again.'}
+                onRetry={() => refetch()}
+              />
+            )}
+          </>
+        )}
+        {!isLoading && !isError && (
+          <>
+          <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[900px] text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted">
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Staff</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Role</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Skills</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Certified locations</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hours</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedStaff.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="cursor-pointer border-b border-border transition hover:bg-muted"
+                    onClick={() => openDetail(user)}
+                  >
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-xs">
+                            {user.firstName[0]}
+                            {user.lastName[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {user.firstName} {user.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant="secondary">{user.role}</Badge>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {(user.skills ?? []).map((s) => (
+                          <Badge key={s.id} variant="outline" className="text-xs">
+                            {s.name}
+                          </Badge>
+                        ))}
+                        {(!user.skills || user.skills.length === 0) && (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-wrap gap-1">
+                        {(user.locationCertifications ?? [])
+                          .filter((c) => !c.revokedAt)
+                          .map((c) => (
+                            <Badge key={c.id} variant="outline" className="text-xs">
+                              {c.location?.name ?? c.locationId}
+                            </Badge>
+                          ))}
+                        {(!user.locationCertifications ||
+                          user.locationCertifications.filter((c) => !c.revokedAt).length === 0) && (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {weeklyHours[user.id] != null ? (
+                        <span className={weeklyHours[user.id] >= 40 ? 'font-medium text-destructive' : weeklyHours[user.id] >= 35 ? 'font-medium text-amber-600' : ''}>
+                          {weeklyHours[user.id]}h
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge variant={user.isActive ? 'default' : 'secondary'}>
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filtered.length === 0 && (
+              <div className="flex flex-col items-center justify-center px-3 py-12 text-center">
+                <p className="text-sm font-medium text-muted-foreground">No staff match the filters.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try changing filters or add staff from your admin.</p>
+              </div>
+            )}
+          </div>
+          <PaginationControls currentPage={staffPage} totalPages={staffTotalPages} onPageChange={safeSetStaffPage} />
+          </>
+        )}
+      </PermissionGate>
+
+      <StaffDetailSheet
+        user={selectedUser}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        onClose={() => setSelectedUser(null)}
+      />
+    </div>
+  );
+}

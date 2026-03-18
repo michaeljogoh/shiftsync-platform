@@ -5,7 +5,7 @@ import * as Joi from 'joi';
 @Module({
   imports: [
     NestConfigModule.forRoot({
-      isGlobal: true,
+      isGlobal: true, 
       envFilePath: '.env',
       validationSchema: Joi.object({
         NODE_ENV: Joi.string()
@@ -20,12 +20,14 @@ import * as Joi from 'joi';
         REFRESH_TOKEN_EXPIRES_IN: Joi.string().default('7d'),
         POSTMARK_SERVER_TOKEN: Joi.string().allow('').optional(),
         POSTMARK_FROM_EMAIL: Joi.string().email().allow('').optional(),
-        REDIS_URL: Joi.string().uri().optional(),
         ENABLE_EMAIL_NOTIFICATIONS: Joi.string()
           .valid('true', 'false')
           .default('true'),
         OVERTIME_HARD_BLOCK_HOURS: Joi.number().default(12),
         DEFAULT_EDIT_CUTOFF_HOURS: Joi.number().default(48),
+        PUBLISH_BLOCK_UNFILLED_HEADCOUNT: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
       }),
     }),
   ],

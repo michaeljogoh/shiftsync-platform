@@ -1,4 +1,20 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Shift } from '../shifts/entities/shift.entity';
+import { ShiftAssignment } from '../assignments/entities/shift-assignment.entity';
+import { User } from '../users/entities/user.entity';
+import { AnalyticsController } from './analytics.controller';
+import { AnalyticsService } from './analytics.service';
+import { LocationAccessGuard } from '../../common/guards/location-access.guard';
+import { AssignmentsModule } from '../assignments/assignments.module';
 
-@Module({})
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([Shift, ShiftAssignment, User]),
+    AssignmentsModule,
+  ],
+  controllers: [AnalyticsController],
+  providers: [AnalyticsService, LocationAccessGuard],
+  exports: [AnalyticsService],
+})
 export class AnalyticsModule {}

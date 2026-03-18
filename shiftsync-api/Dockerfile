@@ -1,4 +1,10 @@
-# -------- Build Stage --------
+FROM node:22-alpine AS deps
+
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+RUN npm ci
+
 FROM node:22-alpine AS builder
 
 WORKDIR /usr/src/app
@@ -24,13 +30,11 @@ ENV NODE_ENV=production
 
 # Copy only package.json and install prod dependencies
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # Copy built files from builder
 COPY --from=builder /usr/src/app/dist ./dist
 
-# Expose port
-EXPOSE 3000
-
-# Start the app
+EXPOSE 4000
 CMD ["node", "dist/main.js"]
+
