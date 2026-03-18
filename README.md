@@ -8,13 +8,16 @@ Built with a **NestJS REST API** (`shiftsync-api`) and a **Next.js 14 web fronte
 ## Table of Contents
 
 1. [Architecture](#architecture)
-2. [Quick Start](#quick-start)
-3. [Login Credentials](#login-credentials-seed-data)
-4. [Role Capabilities](#role-capabilities)
-5. [Page Reference](#page-reference)
-6. [Real-Time Events](#real-time-events)
-7. [Known Limitations](#known-limitations)
-8. [Assumptions and Design Decisions](#assumptions-and-design-decisions)
+2. [Quick Start (Local)](#quick-start-local)
+3. [Start with Docker (One Command)](#start-with-docker-one-command)
+4. [How the Platform Works](#how-the-platform-works)
+5. [Login Credentials (Seed Data)](#login-credentials-seed-data)
+6. [Role Capabilities](#role-capabilities)
+7. [Trade-offs](#trade-offs)
+8. [Page Reference](#page-reference)
+9. [Real-Time Events](#real-time-events)
+10. [Known Limitations](#known-limitations)
+11. [Assumptions and Design Decisions](#assumptions-and-design-decisions)
 
 ---
 
@@ -29,7 +32,7 @@ Built with a **NestJS REST API** (`shiftsync-api`) and a **Next.js 14 web fronte
 
 ---
 
-## Quick Start
+## Quick Start (Local)
 
 ### Prerequisites
 
@@ -68,7 +71,48 @@ npm install
 npm run dev   # http://localhost:3001
 ```
 
-> **Critical — fix before first run:** The API `.env` defaults to `PORT=4000` but the committed `.env.local` points to `localhost:3000`. These must match. Either update `NEXT_PUBLIC_API_URL` and `API_URL` to `http://localhost:4000`, or change `PORT=3000` in the API `.env`.
+> Tip: keep the API `PORT` and the web `NEXT_PUBLIC_API_URL` in sync (local dev vs Docker).
+
+---
+
+## Start with Docker (One Command)
+
+This runs **Postgres + API + Web** together.
+
+### Steps
+1. From the repo root (`shiftsync-platform`):
+
+```bash
+docker compose up --build
+```
+
+2. Open:
+   - Web: `http://localhost:3000`
+   - API: `http://localhost:4000/api/v1`
+
+3. Seed demo accounts (recommended once after first boot):
+
+```bash
+docker compose exec api npm run migration:run
+docker compose exec api npm run seed
+```
+
+> The seed script creates the demo admin/manager/staff users so you can log in right away.
+
+---
+
+## How the Platform Works
+
+ShiftSync is split into:
+
+- `shiftsync-api` (NestJS): authentication, RBAC permissions, scheduling/business rules, and the audit trail.
+- `shiftsync-web` (Next.js): UI with permission-aware actions and responsive tables/grids.
+
+High-level flow:
+1. Log in to receive an access token (and a refresh token flow handled by the web client).
+2. Every API request is checked against your role permissions.
+3. Managers and staff are additionally scoped to their allowed locations.
+4. Schedule changes broadcast via Socket.IO so connected clients update quickly.
 
 ---
 
@@ -163,6 +207,12 @@ Cannot create users or change global settings.
 | Analytics | View own weekly hours projection |
 | Profile | Update name, phone, desired hours/week, change password |
 
+## Trade-offs
+
+- **Client-side pagination** is used for many tables/grids to keep the UI responsive and reduce backend load for typical dataset sizes.
+- **Analytics caching (short TTL)** favors performance; values update automatically shortly after underlying data changes.
+- **Staff analytics is simplified** to “my weekly projected hours” to keep self-service secure and fast.
+
 ---
 
 ## Page Reference
@@ -210,29 +260,8 @@ The web client connects to Socket.IO at `NEXT_PUBLIC_SOCKET_URL`. Events are sco
 
 ## Known Limitations
 
-1. **Port mismatch in committed `.env.local`**
-   The API `.env` defaults to `PORT=4000`; the committed `.env.local` targets `localhost:3000`. Both must match before the frontend can reach the API. See Quick Start.
+- Ensure environment variables match when switching between local dev and Docker (API `PORT`, web `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SOCKET_URL`).
 
-2. **Refresh token expires in 15 minutes (same as access token)**
-   `REFRESH_TOKEN_EXPIRES_IN=15m` in the current `.env` gives sessions only 15 minutes. Change it to `7d` for normal operation. Both `JWT_SECRET` and `REFRESH_TOKEN_SECRET` are also set to identical values — use distinct secrets in any non-local environment.
-
-3. **No role-based sidebar filtering**
-   All navigation items are rendered for every authenticated user. Access control lives at the API and page level, not in the sidebar.
-
-4. **Calendar drag-and-drop view not implemented**
-   `react-big-calendar` and `react-dnd` are installed but not yet integrated. The schedule page offers week-card and list views only.
-
-5. **No server-side pagination on list views**
-   Staff, Shifts, and Notifications load all records in one request. The API supports `page` and `limit` query params but the UI does not yet use them.
-
-6. **Email delivery requires a valid Postmark token**
-   If `POSTMARK_SERVER_TOKEN` is absent or invalid, emails fail silently. In-app notifications continue to work regardless.
-
-7. **Availability exceptions are date-specific only**
-   Recurring exceptions (e.g., unavailable every Monday in December) are not supported. Each exception must be entered per individual date.
-
-8. **No offline or PWA support**
-   An active API connection is required at all times. There is no service worker or local cache layer.
 
 ---
 

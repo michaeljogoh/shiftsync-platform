@@ -1,14 +1,26 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
+import { User } from '../users/entities/user.entity';
+import type { SessionUser } from '../auth/auth.types';
 
 @Injectable()
 export class AuditService {
   constructor(
     @InjectRepository(AuditLog)
     private readonly auditRepo: Repository<AuditLog>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
   ) {}
+
+  private async getManagerLocationIds(managerId: string): Promise<string[]> {
+    const manager = await this.usersRepo.findOne({
+      where: { id: managerId },
+      relations: ['managedLocations'],
+    });
+    return (manager?.managedLocations ?? []).map((l) => l.id);
+  }
 
   async findAll(filters: {
     entityType?: string;
@@ -16,6 +28,7 @@ export class AuditService {
     actorId?: string;
     actorEmail?: string;
     locationId?: string;
+    allowedLocationIds?: string[];
     limit?: number;
     offset?: number;
   }): Promise<AuditLog[]> {
@@ -30,9 +43,36 @@ export class AuditService {
     if (filters.actorId) qb.andWhere('a.actorId = :actorId', { actorId: filters.actorId });
     if (filters.actorEmail) qb.andWhere('actor.email ILIKE :actorEmail', { actorEmail: `%${filters.actorEmail}%` });
     if (filters.locationId) qb.andWhere('a.locationId = :locationId', { locationId: filters.locationId });
+    if (filters.allowedLocationIds) {
+      if (filters.allowedLocationIds.length === 0) return [];
+      qb.andWhere('a.locationId IN (:...allowedLocationIds)', {
+        allowedLocationIds: filters.allowedLocationIds,
+      });
+    }
 
     qb.take(filters.limit ?? 25).skip(filters.offset ?? 0);
     return qb.getMany();
+  }
+
+  async findAllForUser(
+    actor: SessionUser,
+    filters: {
+      entityType?: string;
+      entityId?: string;
+      actorId?: string;
+      actorEmail?: string;
+      locationId?: string;
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<AuditLog[]> {
+    if (actor.role !== 'manager') return this.findAll(filters);
+
+    const allowedLocationIds = await this.getManagerLocationIds(actor.id);
+    if (filters.locationId && !allowedLocationIds.includes(filters.locationId)) {
+      throw new ForbiddenException('You do not have manager access to this location');
+    }
+    return this.findAll({ ...filters, allowedLocationIds });
   }
 
   async exportCsv(filters: {

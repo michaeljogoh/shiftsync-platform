@@ -16,10 +16,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/page.js"
     ],
-    "/page": [
+    "/dashboard/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/dashboard/layout.js"
     ],
     "/(dashboard)/schedule/page": [
       "static/chunks/webpack.js",
@@ -36,30 +36,35 @@
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/staff/page.js"
     ],
-    "/(dashboard)/swaps/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/swaps/page.js"
-    ],
     "/(dashboard)/analytics/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/analytics/page.js"
+    ],
+    "/(dashboard)/swaps/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(dashboard)/swaps/page.js"
     ],
     "/(dashboard)/notifications/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/notifications/page.js"
     ],
+    "/(dashboard)/audit/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/(dashboard)/audit/page.js"
+    ],
     "/(dashboard)/on-duty/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/(dashboard)/on-duty/page.js"
     ],
-    "/(dashboard)/audit/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/(dashboard)/audit/page.js"
+      "static/chunks/app/page.js"
     ],
     "/(dashboard)/locations/page": [
       "static/chunks/webpack.js",

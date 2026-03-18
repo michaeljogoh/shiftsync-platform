@@ -15,6 +15,7 @@ import {
 import { SocketStatus } from "@/components/shared/SocketStatus"
 import { usePathname } from "next/navigation"
 import { useNotificationsStore } from "@/lib/stores/notifications.store"
+import { useAuthStore } from "@/lib/stores/auth.store"
 import {
   GalleryVerticalEndIcon,
   CalendarIcon,
@@ -28,7 +29,7 @@ import {
 } from "lucide-react"
 
 const navMainItems = [
-  // { title: "Dashboard", url: "/", icon: <GalleryVerticalEndIcon className="size-4" />, items: [{ title: "Overview", url: "/" }] },
+  { title: "Dashboard", url: "/dashboard", icon: <GalleryVerticalEndIcon className="size-4" />, items: [{ title: "Overview", url: "/" }] },
   { title: "Schedule", url: "/schedule", icon: <CalendarIcon className="size-4" />, items: [{ title: "View", url: "/schedule" }] },
   { title: "Staff", url: "/staff", icon: <UsersIcon className="size-4" />, items: [{ title: "View", url: "/staff" }] },
   { title: "Swap & Drop", url: "/swaps", icon: <ArrowLeftRightIcon className="size-4" />, items: [{ title: "View", url: "/swaps" }] },
@@ -42,8 +43,17 @@ const navMainItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname()
+  const role = useAuthStore((s) => s.session?.role)
   const unreadCount = useNotificationsStore((s) => s.unreadCount)
-  const navMainWithActive = navMainItems.map((item) => ({
+  const visibleNavItems = navMainItems.filter((item) => {
+    if (item.url === "/audit") return role === "admin" || role === "manager"
+    if (item.url === "/staff") return role === "admin" || role === "manager"
+    if (item.url === "/locations") return role === "admin"
+    if (item.url === "/skills") return role === "admin"
+    return true
+  })
+
+  const navMainWithActive = visibleNavItems.map((item) => ({
     ...item,
     isActive: pathname === item.url || pathname?.startsWith(item.url + "/"),
     badgeContent: item.title === "Notifications" && unreadCount > 0 ? unreadCount : undefined,

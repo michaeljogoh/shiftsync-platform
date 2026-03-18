@@ -80,6 +80,64 @@ export class UsersService {
     return qb.getMany();
   }
 
+  async findAllForView(
+    actor: SessionUser,
+    filters?: {
+      role?: 'admin' | 'manager' | 'staff';
+      locationId?: string;
+      skillId?: string;
+    },
+  ): Promise<User[]> {
+    // Admin can see all users.
+    if (actor.role === 'admin') return this.findAll(filters);
+
+    // Managers can only see users who are certified in one of the manager's locations.
+    if (actor.role === 'manager') {
+      const manager = await this.findById(actor.id, ['managedLocations']);
+      const allowedLocationIds = (manager.managedLocations ?? []).map((l) => l.id);
+      if (allowedLocationIds.length === 0) return [];
+
+      // If a location filter is provided, it must be within the manager's scope.
+      if (filters?.locationId && !allowedLocationIds.includes(filters.locationId)) {
+        throw new ForbiddenException('You do not have access to this location');
+      }
+
+      const qb = this.usersRepo
+        .createQueryBuilder('user')
+        .leftJoinAndSelect('user.skills', 'skill')
+        .leftJoinAndSelect('user.locationCertifications', 'cert')
+        .leftJoinAndSelect('cert.location', 'loc')
+        .leftJoinAndSelect('user.managedLocations', 'managedLoc');
+
+      // Scope to users certified at any allowed location (and not revoked).
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM user_location_certifications c WHERE c."userId" = user.id AND c."locationId" IN (:...allowedLocationIds) AND c."revokedAt" IS NULL)',
+        { allowedLocationIds },
+      );
+
+      if (filters?.role) {
+        qb.andWhere('user.role = :role', { role: filters.role });
+      }
+      if (filters?.locationId) {
+        qb.andWhere(
+          'EXISTS (SELECT 1 FROM user_location_certifications c2 WHERE c2."userId" = user.id AND c2."locationId" = :locationId AND c2."revokedAt" IS NULL)',
+          { locationId: filters.locationId },
+        );
+      }
+      if (filters?.skillId) {
+        qb.andWhere(
+          'EXISTS (SELECT 1 FROM user_skills us WHERE us."userId" = user.id AND us."skillId" = :skillId)',
+          { skillId: filters.skillId },
+        );
+      }
+
+      return qb.getMany();
+    }
+
+    // Staff should not have users:view permission, but keep safe default.
+    throw new ForbiddenException('You do not have access to this resource');
+  }
+
   async findById(id: string, relations: string[] = []): Promise<User> {
     const user = await this.usersRepo.findOne({
       where: { id },

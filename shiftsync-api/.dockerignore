@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+.next
+coverage
+.git
+.env
+.env.*
+npm-debug.log*
+

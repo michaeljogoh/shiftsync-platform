@@ -7,11 +7,13 @@ import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { AuditLogEntry } from '@/lib/api/server/audit';
 import { PermissionGate } from '@/components/shared/PermissionGate';
+import { PaginationControls } from '@/components/shared/PaginationControls';
 
 export function AuditClient() {
   const [actorEmail, setActorEmail] = useState('');
-  const [offset, setOffset] = useState(0);
+  const [page, setPage] = useState(1);
   const limit = 25;
+  const offset = (page - 1) * limit;
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ['audit-logs', actorEmail, limit, offset],
@@ -24,6 +26,8 @@ export function AuditClient() {
       return data;
     },
   });
+
+  const totalPages = logs.length < limit ? page : page + 1;
 
   const handleExport = async () => {
     const params = new URLSearchParams();
@@ -62,7 +66,7 @@ export function AuditClient() {
             placeholder="Search by actor email…"
             className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-3 text-sm text-foreground sm:h-9 sm:w-64 sm:min-h-0"
             value={actorEmail}
-            onChange={(e) => { setActorEmail(e.target.value); setOffset(0); }}
+            onChange={(e) => { setActorEmail(e.target.value); setPage(1); }}
           />
         </div>
 
@@ -102,26 +106,7 @@ export function AuditClient() {
             )}
           </div>
         )}
-        <div className="flex justify-between gap-2 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-[44px] sm:min-h-0"
-            disabled={offset === 0}
-            onClick={() => setOffset((o) => Math.max(0, o - limit))}
-          >
-            Previous
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-[44px] sm:min-h-0"
-            disabled={logs.length < limit}
-            onClick={() => setOffset((o) => o + limit)}
-          >
-            Next
-          </Button>
-        </div>
+        <PaginationControls currentPage={page} totalPages={totalPages} onPageChange={setPage} />
       </PermissionGate>
     </div>
   );

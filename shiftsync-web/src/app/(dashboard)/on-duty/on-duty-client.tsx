@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api/client/client';
 import { useOnDutyStore } from '@/lib/stores/on-duty.store';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 import type { LocationSummary } from '@/lib/api/server/locations';
 import type { OnDutyPayload } from '@/lib/stores/on-duty.store';
 import { ClockIcon, UsersIcon } from 'lucide-react';
@@ -53,6 +54,10 @@ export function OnDutyClient({ locations }: OnDutyClientProps) {
   const setBulk = useOnDutyStore((s) => s.setBulk);
   const [userNames, setUserNames] = useState<Record<string, { name: string; initials: string }>>({});
   const [loading, setLoading] = useState(true);
+  const [locPage, setLocPage] = useState(1);
+  const LOC_PAGE_SIZE = 6;
+  const { totalPages: locTotalPages, paginate: paginateLocs } = usePagination(locations, LOC_PAGE_SIZE);
+  const pagedLocations = paginateLocs(locPage);
 
   const fetchOnDuty = useCallback(async () => {
     if (locations.length === 0) return;
@@ -124,7 +129,7 @@ export function OnDutyClient({ locations }: OnDutyClientProps) {
       <p className="text-xs text-muted-foreground">Real-time — updates every minute via WebSocket. Times shown in each location&apos;s timezone.</p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {locations.map((loc) => {
+        {pagedLocations.map((loc) => {
           const payload = data[loc.id];
           const onDuty: OnDutyEntry[] = payload?.onDuty ?? [];
           const count = onDuty.length;
@@ -181,6 +186,7 @@ export function OnDutyClient({ locations }: OnDutyClientProps) {
           );
         })}
       </div>
+      <PaginationControls currentPage={locPage} totalPages={locTotalPages} onPageChange={setLocPage} />
     </div>
   );
 }

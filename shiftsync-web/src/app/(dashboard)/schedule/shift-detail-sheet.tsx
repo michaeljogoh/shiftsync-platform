@@ -18,6 +18,7 @@ import { queryKeys } from '@/lib/query-keys';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
 import { formatShiftTimeRange } from '@/lib/format-shift-time';
 import { PermissionGate } from '@/components/shared/PermissionGate';
+import { useAuthStore } from '@/lib/stores/auth.store';
 import { PencilIcon, UserPlusIcon, HistoryIcon } from 'lucide-react';
 
 interface ShiftDetailSheetProps {
@@ -53,6 +54,7 @@ export function ShiftDetailSheet({
 }: ShiftDetailSheetProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
   const hasAutoOpenedAssign = useRef(false);
+  const isAdmin = useAuthStore((s) => s.is('admin'));
 
   const { data: shift, isLoading } = useQuery({
     queryKey: queryKeys.shifts.detail(shiftId ?? ''),
@@ -73,9 +75,17 @@ export function ShiftDetailSheet({
     }
   }, [open, shift, onAssign, openAssignIfUnderstaffed]);
 
+  useEffect(() => {
+    // Non-admin users should never be able to switch into the history tab.
+    if (!isAdmin && activeTab !== 'details') setActiveTab('details');
+  }, [isAdmin, activeTab]);
+
   return (
     <ShiftSheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full p-4 sm:max-w-md">
+      <SheetContent
+        side="right"
+        className="w-full p-4 sm:max-w-md data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-right-10 data-[state=open]:duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-right-10 data-[state=closed]:duration-200"
+      >
         <SheetHeader className="p-0">
           <SheetTitle>Shift details</SheetTitle>
           <SheetDescription>
@@ -228,26 +238,28 @@ export function ShiftDetailSheet({
                 <p className="text-sm text-muted-foreground">No one assigned yet.</p>
               )}
             </div>
-            <div className="flex gap-2 border-t border-border pt-3">
-              <Button
-                variant={activeTab === 'details' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="gap-1"
-                onClick={() => setActiveTab('details')}
-              >
-                Details
-              </Button>
-              <Button
-                variant={activeTab === 'history' ? 'secondary' : 'ghost'}
-                size="sm"
-                className="gap-1"
-                onClick={() => setActiveTab('history')}
-              >
-                <HistoryIcon className="size-3" />
-                History
-              </Button>
-            </div>
-            {activeTab === 'history' && (
+            {isAdmin && (
+              <>
+                <div className="flex gap-2 border-t border-border pt-3">
+                  <Button
+                    variant={activeTab === 'details' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => setActiveTab('details')}
+                  >
+                    Details
+                  </Button>
+                  <Button
+                    variant={activeTab === 'history' ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => setActiveTab('history')}
+                  >
+                    <HistoryIcon className="size-3" />
+                    History
+                  </Button>
+                </div>
+                {activeTab === 'history' && (
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-foreground">Audit trail</h4>
                 {shift.history?.length ? (
@@ -266,6 +278,8 @@ export function ShiftDetailSheet({
                   <p className="text-sm text-muted-foreground">No history yet.</p>
                 )}
               </div>
+                )}
+              </>
             )}
           </div>
         )}

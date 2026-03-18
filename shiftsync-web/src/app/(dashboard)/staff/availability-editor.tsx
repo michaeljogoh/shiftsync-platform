@@ -18,6 +18,7 @@ import { validateAvailabilityWindows } from '@/lib/validations/availability';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { PlusIcon, Trash2Icon } from 'lucide-react';
+import { useAuthStore } from '@/lib/stores/auth.store';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SLOTS_PER_DAY = 48; // 30-min from 00:00 to 24:00
@@ -74,6 +75,7 @@ interface AvailabilityEditorProps {
 
 export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
   const queryClient = useQueryClient();
+  const canUpdateAvailability = useAuthStore((s) => s.can('availability:update'));
   const [grid, setGrid] = useState<boolean[][] | null>(null);
   const [dragging, setDragging] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
@@ -96,21 +98,9 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
 
   const displayGrid = grid ?? initialGrid ?? Array.from({ length: 7 }, () => Array.from({ length: SLOTS_PER_DAY }, () => false));
 
-  const handleCellClick = useCallback(
-    (day: number, slot: number) => {
-      setGrid((prev) => {
-        const next = prev ?? initialGrid ?? displayGrid;
-        const nextGrid = next.map((row, d) =>
-          d === day ? row.map((v, s) => (s === slot ? !v : v)) : [...row],
-        );
-        return nextGrid;
-      });
-    },
-    [initialGrid, displayGrid],
-  );
-
   const handleCellDown = useCallback(
     (day: number, slot: number) => {
+      if (!canUpdateAvailability) return;
       const current = grid ?? initialGrid ?? displayGrid;
       const value = current[day][slot];
       setDragging(!value);
@@ -127,6 +117,7 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
 
   const handleCellEnter = useCallback(
     (day: number, slot: number) => {
+      if (!canUpdateAvailability) return;
       if (dragging === null) return;
       setGrid((prev) => {
         const next = prev ?? initialGrid ?? displayGrid;
@@ -210,13 +201,12 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
                     <button
                       type="button"
                       className={cn(
-                        'block h-3 w-full min-w-[20px] rounded-sm transition last:border-r-0',
+                        'block h-4 w-full min-w-[20px] rounded-sm transition-colors select-none last:border-r-0',
                         displayGrid[day][slot]
                           ? 'bg-primary/80 hover:bg-primary'
-                          : 'bg-muted hover:bg-muted',
+                          : 'bg-muted hover:bg-muted-foreground/20',
                       )}
-                      onClick={() => handleCellClick(day, slot)}
-                      onMouseDown={() => handleCellDown(day, slot)}
+                      onMouseDown={(e) => { e.preventDefault(); handleCellDown(day, slot); }}
                       onMouseEnter={() => handleCellEnter(day, slot)}
                     />
                   </td>
@@ -226,11 +216,13 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-end border-t border-border pt-2">
-        <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : 'Save availability'}
-        </Button>
-      </div>
+      {canUpdateAvailability && (
+        <div className="flex items-center justify-end border-t border-border pt-2">
+          <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save availability'}
+          </Button>
+        </div>
+      )}
       <ExceptionsSection userId={userId} exceptions={data?.exceptions ?? []} />
     </div>
   );

@@ -6,6 +6,7 @@ import { UserLocationCertification } from './entities/user-location-certificatio
 import { ShiftAssignment } from '../assignments/entities/shift-assignment.entity';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import type { SessionUser } from '../auth/auth.types';
 
 @Injectable()
 export class LocationsService {
@@ -18,11 +19,17 @@ export class LocationsService {
     private readonly assignmentsRepo: Repository<ShiftAssignment>,
   ) {}
 
-  async findAll(): Promise<Location[]> {
-    return this.locationsRepo.find({
-      where: {},
-      order: { name: 'ASC' },
-    });
+  async findAll(user?: SessionUser): Promise<Location[]> {
+    if (user?.role === 'manager') {
+      return this.locationsRepo
+        .createQueryBuilder('l')
+        .innerJoin('l.managers', 'm', 'm.id = :managerId', {
+          managerId: user.id,
+        })
+        .orderBy('l.name', 'ASC')
+        .getMany();
+    }
+    return this.locationsRepo.find({ where: {}, order: { name: 'ASC' } });
   }
 
   async findById(id: string, relations: string[] = []): Promise<Location> {

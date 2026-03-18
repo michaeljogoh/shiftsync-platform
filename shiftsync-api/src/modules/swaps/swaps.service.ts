@@ -38,6 +38,28 @@ export class SwapsService {
     private readonly mailService: MailService,
   ) {}
 
+  private async getManagerLocationIds(managerId: string): Promise<string[]> {
+    const manager = await this.usersRepo.findOne({
+      where: { id: managerId },
+      relations: ['managedLocations'],
+    });
+    return (manager?.managedLocations ?? []).map((l) => l.id);
+  }
+
+  private async assertManagerAccessToSwap(
+    managerId: string,
+    swap: SwapRequest,
+  ): Promise<void> {
+    const locationId = (swap as unknown as {
+      initiatorAssignment?: { shift?: { locationId?: string } };
+    })?.initiatorAssignment?.shift?.locationId;
+    if (!locationId) return;
+    const allowed = await this.getManagerLocationIds(managerId);
+    if (!allowed.includes(locationId)) {
+      throw new ForbiddenException('You do not have access to this location');
+    }
+  }
+
   async create(dto: CreateSwapDto, initiatorId: string): Promise<SwapRequest> {
     const pendingCount = await this.swapsRepo.count({
       where: [
@@ -150,6 +172,44 @@ export class SwapsService {
     return qb.orderBy('s.createdAt', 'DESC').getMany();
   }
 
+  async findAllForView(
+    actor: SessionUser,
+    filters: { locationId?: string; status?: string },
+  ): Promise<SwapRequest[]> {
+    if (actor.role === 'admin') return this.findAll(filters);
+    if (actor.role !== 'manager') {
+      throw new ForbiddenException('You do not have access to this resource');
+    }
+
+    const allowedLocationIds = await this.getManagerLocationIds(actor.id);
+    if (allowedLocationIds.length === 0) return [];
+    if (filters.locationId && !allowedLocationIds.includes(filters.locationId)) {
+      throw new ForbiddenException('You do not have access to this location');
+    }
+
+    const qb = this.swapsRepo
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.initiator', 'initiator')
+      .leftJoinAndSelect('s.targetUser', 'targetUser')
+      .leftJoinAndSelect('s.initiatorAssignment', 'ia')
+      .leftJoinAndSelect('ia.shift', 'shift')
+      .leftJoinAndSelect('shift.location', 'loc')
+      .andWhere('shift.locationId IN (:...allowedLocationIds)', {
+        allowedLocationIds,
+      });
+
+    if (filters.locationId) {
+      qb.andWhere('shift.locationId = :locationId', {
+        locationId: filters.locationId,
+      });
+    }
+    if (filters.status) {
+      qb.andWhere('s.status = :status', { status: filters.status });
+    }
+
+    return qb.orderBy('s.createdAt', 'DESC').getMany();
+  }
+
   async findById(id: string): Promise<SwapRequest> {
     const swap = await this.swapsRepo.findOne({
       where: { id },
@@ -158,10 +218,27 @@ export class SwapsService {
         'targetUser',
         'initiatorAssignment',
         'initiatorAssignment.shift',
+        'initiatorAssignment.shift.location',
         'targetAssignment',
       ],
     });
     if (!swap) throw new NotFoundException('Swap request not found');
+    return swap;
+  }
+
+  async findByIdForView(actor: SessionUser, id: string): Promise<SwapRequest> {
+    const swap = await this.findById(id);
+    if (actor.role === 'admin') return swap;
+    if (actor.role === 'manager') {
+      await this.assertManagerAccessToSwap(actor.id, swap);
+      return swap;
+    }
+    // staff can only view swaps they are part of
+    const isParticipant =
+      swap.initiatorId === actor.id || swap.targetUserId === actor.id;
+    if (!isParticipant) {
+      throw new ForbiddenException('You do not have access to this swap');
+    }
     return swap;
   }
 
@@ -247,6 +324,7 @@ export class SwapsService {
     if (swap.status !== 'pending_manager') {
       throw new ConflictException('Swap is not pending approval');
     }
+    await this.assertManagerAccessToSwap(managerId, swap);
 
     if (swap.type === 'swap' && swap.targetAssignmentId) {
       const initAssignment = await this.assignmentsRepo.findOne({
@@ -417,6 +495,7 @@ export class SwapsService {
     if (swap.status !== 'pending_manager') {
       throw new ConflictException('Swap is not pending approval');
     }
+    await this.assertManagerAccessToSwap(managerId, swap);
     swap.status = 'rejected';
     swap.reviewedBy = managerId;
     swap.reviewedAt = new Date();

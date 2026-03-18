@@ -92,7 +92,10 @@ export function StaffDetailSheet({ user, open, onOpenChange, onClose }: StaffDet
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="right" className="flex w-full flex-col p-4 sm:!max-w-md lg:!max-w-2xl overflow-hidden">
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col overflow-hidden p-4 sm:!max-w-md lg:!max-w-2xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:slide-in-from-right-10 data-[state=open]:duration-300 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-right-10 data-[state=closed]:duration-200"
+      >
         <SheetHeader>
           {u && (
             <div className="flex items-center gap-3">
@@ -218,7 +221,7 @@ function ProfileTab({ user, onUpdated }: { user: UserSummary; onUpdated: () => v
         <p className="text-xs text-muted-foreground">Status</p>
         <Badge variant={user.isActive ? 'default' : 'destructive'}>{user.isActive ? 'Active' : 'Inactive'}</Badge>
       </div>
-      <RoleGate role={['admin', 'manager']}>
+      <RoleGate role={['admin']}>
         <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
           Edit profile
         </Button>

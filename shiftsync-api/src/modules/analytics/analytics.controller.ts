@@ -5,7 +5,12 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LocationAccessGuard } from '../../common/guards/location-access.guard';
-import { RequirePermission, Roles } from '../../common/decorators/auth.decorators';
+import {
+  CurrentUser,
+  RequirePermission,
+  Roles,
+} from '../../common/decorators/auth.decorators';
+import type { SessionUser } from '../auth/auth.types';
 
 @ApiTags('Analytics')
 @ApiBearerAuth()
@@ -19,10 +24,11 @@ export class AnalyticsController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Projected overtime for week' })
   async getOvertime(
+    @CurrentUser() user: SessionUser,
     @Query('locationId') locationId?: string,
     @Query('weekStart') weekStart?: string,
   ) {
-    return this.analyticsService.getOvertime(locationId, weekStart);
+    return this.analyticsService.getOvertime(locationId, weekStart, user);
   }
 
   @Get('hours-distribution')
@@ -30,6 +36,7 @@ export class AnalyticsController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Hours per staff (cached 5min)' })
   async getHoursDistribution(
+    @CurrentUser() user: SessionUser,
     @Query('locationId') locationId: string | undefined,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
@@ -38,6 +45,7 @@ export class AnalyticsController {
       locationId,
       startDate,
       endDate,
+      user,
     );
   }
 
@@ -58,8 +66,11 @@ export class AnalyticsController {
   @RequirePermission('analytics:view')
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Preview impact of assigning user to shift' })
-  async whatIf(@Body() body: { userId: string; shiftId: string }) {
-    return this.analyticsService.whatIf(body.userId, body.shiftId);
+  async whatIf(
+    @CurrentUser() user: SessionUser,
+    @Body() body: { userId: string; shiftId: string },
+  ) {
+    return this.analyticsService.whatIf(body.userId, body.shiftId, user);
   }
 
   @Get('understaffed')
@@ -67,6 +78,7 @@ export class AnalyticsController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'Shifts with unfilled headcount' })
   async getUnderstaffed(
+    @CurrentUser() user: SessionUser,
     @Query('locationId') locationId?: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -75,6 +87,7 @@ export class AnalyticsController {
       locationId,
       startDate,
       endDate,
+      user,
     );
   }
 }
