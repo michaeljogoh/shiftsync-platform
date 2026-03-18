@@ -16,9 +16,9 @@ export function NotFound({
   backLabel = 'Go back',
 }: NotFoundProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-6 py-12 text-center">
-      <FileQuestionIcon className="mb-3 size-10 text-slate-400" />
-      <p className="text-sm font-medium text-slate-200">{message}</p>
+    <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-12 text-center">
+      <FileQuestionIcon className="mb-3 size-10 text-muted-foreground" />
+      <p className="text-sm font-medium text-foreground">{message}</p>
       <Button asChild variant="outline" className="mt-4">
         <Link href={backHref}>{backLabel}</Link>
       </Button>

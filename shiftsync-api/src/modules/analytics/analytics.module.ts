@@ -6,10 +6,12 @@ import { User } from '../users/entities/user.entity';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { LocationAccessGuard } from '../../common/guards/location-access.guard';
+import { AssignmentsModule } from '../assignments/assignments.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Shift, ShiftAssignment, User]),
+    AssignmentsModule,
   ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService, LocationAccessGuard],

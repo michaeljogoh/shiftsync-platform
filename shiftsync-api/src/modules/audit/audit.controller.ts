@@ -24,12 +24,13 @@ export class AuditController {
 
   @Get('logs')
   @RequirePermission('audit:view')
-  @Roles('admin')
-  @ApiOperation({ summary: 'List audit logs (Admin)' })
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'List audit logs' })
   async getLogs(
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('actorId') actorId?: string,
+    @Query('actorEmail') actorEmail?: string,
     @Query('locationId') locationId?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
@@ -38,6 +39,7 @@ export class AuditController {
       entityType,
       entityId,
       actorId,
+      actorEmail,
       locationId,
       limit: limit ? parseInt(limit, 10) : 25,
       offset: offset ? parseInt(offset, 10) : 0,
@@ -53,12 +55,14 @@ export class AuditController {
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('actorId') actorId?: string,
+    @Query('actorEmail') actorEmail?: string,
     @Query('locationId') locationId?: string,
   ) {
     const csv = await this.auditService.exportCsv({
       entityType,
       entityId,
       actorId,
+      actorEmail,
       locationId,
     });
     res.setHeader('Content-Type', 'text/csv');

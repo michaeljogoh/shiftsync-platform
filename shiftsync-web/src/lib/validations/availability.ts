@@ -27,12 +27,18 @@ export function validateAvailabilityWindows(
   effectiveFrom: string,
 ): z.SafeParseReturnType<AvailabilityWindowInput[], AvailabilityWindowInput[]> {
   const parsed: AvailabilityWindowInput[] = [];
-  for (const w of windows) {
+  for (let i = 0; i < windows.length; i++) {
+    const w = windows[i];
     const result = availabilityWindowSchema.safeParse({
       ...w,
       effectiveFrom,
     });
-    if (!result.success) return result;
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+      } as z.SafeParseReturnType<AvailabilityWindowInput[], AvailabilityWindowInput[]>;
+    }
     parsed.push(result.data);
   }
   return { success: true, data: parsed };

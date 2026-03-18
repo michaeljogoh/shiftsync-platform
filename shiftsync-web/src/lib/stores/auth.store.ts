@@ -15,11 +15,12 @@ export type Permission = string;
 
 export interface AuthStore {
   accessToken: string | null;
+  refreshToken: string | null;
   session: Session | null;
   isAuthenticated: boolean;
 
-  setAuth: (accessToken: string, session: Session, remember?: boolean) => void;
-  updateSession: (accessToken: string, session: Session) => void;
+  setAuth: (accessToken: string, session: Session, remember?: boolean, refreshToken?: string) => void;
+  updateSession: (accessToken: string, session: Session, refreshToken?: string) => void;
   clearAuth: () => void;
 
   can: (feature: Permission) => boolean;
@@ -30,22 +31,23 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       accessToken: null,
+      refreshToken: null,
       session: null,
       isAuthenticated: false,
 
-      setAuth(accessToken, session, remember = true) {
-        set({ accessToken, session, isAuthenticated: true });
+      setAuth(accessToken, session, remember = true, refreshToken) {
+        set({ accessToken, refreshToken: refreshToken ?? null, session, isAuthenticated: true });
         setAuthCookies(accessToken, session, remember);
       },
 
-      updateSession(accessToken, session) {
-        set({ accessToken, session, isAuthenticated: true });
+      updateSession(accessToken, session, refreshToken) {
+        set({ accessToken, refreshToken: refreshToken ?? get().refreshToken, session, isAuthenticated: true });
         setAuthCookies(accessToken, session, true);
       },
 
       clearAuth() {
         closeSocket();
-        set({ accessToken: null, session: null, isAuthenticated: false });
+        set({ accessToken: null, refreshToken: null, session: null, isAuthenticated: false });
         clearAuthCookies();
       },
 
@@ -63,6 +65,7 @@ export const useAuthStore = create<AuthStore>()(
       name: 'shiftsync-auth',
       partialize: (state) => ({
         accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
         session: state.session,
         isAuthenticated: state.isAuthenticated,
       }),

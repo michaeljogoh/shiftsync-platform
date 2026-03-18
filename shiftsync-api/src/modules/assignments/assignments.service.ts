@@ -45,6 +45,8 @@ export interface AssignmentValidationResult {
   >;
 }
 
+type AssignmentWarning = NonNullable<AssignmentValidationResult['warnings']>[number];
+
 @Injectable()
 export class AssignmentsService {
   constructor(
@@ -131,9 +133,16 @@ export class AssignmentsService {
 
       const overlapCheck = await this.checkDoubleBooking(dto.userId, shift);
       if (!overlapCheck.valid) {
-        this.realtimeService.emitToUser(assignedBy, RealtimeEvents.ASSIGNMENT_CONFLICT, {
+        const conflictPayload = {
           message: overlapCheck.message,
+          userId: dto.userId,
+          shiftId: shift.id,
           ...overlapCheck.details,
+        };
+        this.realtimeService.emitToUser(assignedBy, RealtimeEvents.ASSIGNMENT_CONFLICT, conflictPayload);
+        this.realtimeService.emitToLocation(shift.locationId, RealtimeEvents.ASSIGNMENT_CONFLICT, {
+          ...conflictPayload,
+          triggeredBy: assignedBy,
         });
         throw new AssignmentConflictException(
           overlapCheck.message!,
@@ -529,7 +538,7 @@ export class AssignmentsService {
   ): Promise<{
     hardBlock: boolean;
     message?: string;
-    warning?: AssignmentValidationResult['warnings'][0];
+    warning?: AssignmentWarning;
   }> {
     const durationHours =
       (shift.endAt.getTime() - shift.startAt.getTime()) / (60 * 60 * 1000);
@@ -638,7 +647,7 @@ export class AssignmentsService {
   ): Promise<{
     valid: boolean;
     message?: string;
-    warning?: AssignmentValidationResult['warnings'][0];
+    warning?: AssignmentWarning;
   }> {
     const tz =
       (shift as Shift & { location?: { ianaTimezone: string } }).location

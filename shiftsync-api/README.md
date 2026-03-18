@@ -12,6 +12,7 @@ This README is meant for **client developers**: what endpoints exist, what to se
 
 ### Contents
 
+- [Running locally](#running-locally)
 - [API versioning + Swagger](#api-versioning--swagger)
 - [Auth & tokens](#auth--tokens)
 - [Global validation](#global-validation)
@@ -31,6 +32,44 @@ This README is meant for **client developers**: what endpoints exist, what to se
   - [REST (axios)](#rest-axios)
   - [Socket.IO client](#socketio-client)
 - [Seed data](#seed-data)
+
+---
+
+## Running locally
+
+1. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+2. **Configure environment**
+
+   - Copy `.env.example` to `.env` if provided, or ensure at least:
+     - `DATABASE_URL` – Postgres connection string
+     - `JWT_SECRET` – random long string
+     - `JWT_EXPIRES_IN` – e.g. `15m`
+   - Make sure your Postgres instance is running and accessible from your machine.
+
+3. **Run database migrations**
+
+   ```bash
+   npm run migration:run
+   ```
+
+   If you have no tables yet and want demo data, also run:
+
+   ```bash
+   npm run seed
+   ```
+
+4. **Start the API (dev mode)**
+
+   ```bash
+   npm run start:dev
+   ```
+
+   The API will be available at `http://localhost:3000/api/v1` (see `PORT` in `.env` if customized).
 
 ---
 

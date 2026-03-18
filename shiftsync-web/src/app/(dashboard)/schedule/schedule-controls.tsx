@@ -41,9 +41,9 @@ export function ScheduleControls({
   });
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3 sm:gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3 sm:gap-3">
       <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-        <div className="flex items-center rounded-md border border-slate-700 bg-slate-900/50 p-0.5 sm:p-1">
+        <div className="flex items-center rounded-md border border-input bg-muted p-0.5 sm:p-1">
           <Button
             variant="ghost"
             size="sm"
@@ -53,7 +53,7 @@ export function ScheduleControls({
             <ChevronLeftIcon className="size-4" />
             <span className="hidden sm:inline">Prev</span>
           </Button>
-          <span className="min-w-[100px] px-1.5 text-center text-xs font-medium text-slate-200 sm:min-w-[140px] sm:px-2 sm:text-sm">
+          <span className="min-w-[100px] px-1.5 text-center text-xs font-medium text-foreground sm:min-w-[140px] sm:px-2 sm:text-sm">
             {weekLabel}
           </span>
           <Button
@@ -74,7 +74,7 @@ export function ScheduleControls({
         >
           Today
         </Button>
-        <div className="flex rounded-md border border-slate-700 bg-slate-900/50 p-0.5 sm:p-1">
+        <div className="flex rounded-md border border-input bg-muted p-0.5 sm:p-1">
           <Button
             variant={viewMode === 'calendar' ? 'secondary' : 'ghost'}
             size="sm"
@@ -99,13 +99,13 @@ export function ScheduleControls({
         <PermissionGate require="shifts:publish">
           {onPublishWeek && (
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               className="h-9 min-h-[44px] sm:h-8"
               onClick={onPublishWeek}
               disabled={!hasDrafts || isPublishing}
             >
-              {isPublishing ? '…' : <>Publish<span className="hidden sm:inline"> week</span></>}
+              {isPublishing ? 'publishing...' : <>Publish<span className="hidden sm:inline"> week</span></>}
             </Button>
           )}
         </PermissionGate>

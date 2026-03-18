@@ -3,12 +3,21 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { AvailabilityWindow, AvailabilityException } from '@/lib/api/server/availability';
 import { validateAvailabilityWindows } from '@/lib/validations/availability';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { PlusIcon, Trash2Icon } from 'lucide-react';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const SLOTS_PER_DAY = 48; // 30-min from 00:00 to 24:00
@@ -163,28 +172,28 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
   }, [displayGrid, data?.windows, userId, queryClient]);
 
   if (isLoading) {
-    return <div className="text-sm text-slate-400">Loading availability…</div>;
+    return <div className="text-sm text-muted-foreground">Loading availability…</div>;
   }
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300">
+      <div className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground">
         Your availability windows are stored as time-of-day references and will be interpreted in each location&apos;s timezone. For example, 9 AM availability means 9 AM Eastern at your Eastern locations and 9 AM Pacific at your Pacific locations.
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted-foreground">
         Click or drag to mark available blocks (30-min slots). Save to update.
       </p>
       <div
-        className="overflow-x-auto rounded border border-slate-700"
+        className="overflow-x-auto rounded border border-border"
         onMouseLeave={() => setDragging(null)}
         onMouseUp={() => setDragging(null)}
       >
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-slate-700 bg-slate-800">
-              <th className="w-10 border-r border-slate-700 py-1 text-left text-[10px] text-slate-500">Time</th>
+            <tr className="border-b border-border bg-muted">
+              <th className="w-10 border-r border-border py-1 text-left text-[10px] text-muted-foreground">Time</th>
               {DAYS.map((d) => (
-                <th key={d} className="min-w-[28px] border-r border-slate-700 py-1 text-center font-medium text-slate-300 last:border-r-0">
+                <th key={d} className="min-w-[28px] border-r border-border py-1 text-center font-medium text-foreground last:border-r-0">
                   {d}
                 </th>
               ))}
@@ -192,8 +201,8 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
           </thead>
           <tbody>
             {Array.from({ length: SLOTS_PER_DAY }, (_, slot) => (
-              <tr key={slot} className="border-b border-slate-800/80">
-                <td className="border-r border-slate-700 py-0.5 pl-1 text-[10px] text-slate-500">
+              <tr key={slot} className="border-b border-border/80">
+                <td className="border-r border-border py-0.5 pl-1 text-[10px] text-muted-foreground">
                   {slot % 2 === 0 ? slotToTime(slot) : ''}
                 </td>
                 {DAYS.map((_, day) => (
@@ -204,7 +213,7 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
                         'block h-3 w-full min-w-[20px] rounded-sm transition last:border-r-0',
                         displayGrid[day][slot]
                           ? 'bg-primary/80 hover:bg-primary'
-                          : 'bg-slate-800 hover:bg-slate-700',
+                          : 'bg-muted hover:bg-muted',
                       )}
                       onClick={() => handleCellClick(day, slot)}
                       onMouseDown={() => handleCellDown(day, slot)}
@@ -217,25 +226,132 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between border-t border-slate-800 pt-2">
-        <p className="text-xs text-slate-500">Exceptions: add via date picker + available/unavailable (coming soon).</p>
+      <div className="flex items-center justify-end border-t border-border pt-2">
         <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving…' : 'Save availability'}
         </Button>
       </div>
-      {data?.exceptions && data.exceptions.length > 0 && (
-        <div className="rounded border border-slate-700 bg-slate-800/50 p-2">
-          <p className="mb-1 text-xs font-medium text-slate-400">Exceptions</p>
-          <ul className="space-y-1 text-xs text-slate-300">
-            {data.exceptions.map((ex) => (
-              <li key={ex.id}>
-                {ex.exceptionDate} — {ex.isAvailable ? 'Available' : 'Unavailable'}
-                {ex.startTime && ` ${ex.startTime}-${ex.endTime}`}
-              </li>
-            ))}
-          </ul>
-        </div>
+      <ExceptionsSection userId={userId} exceptions={data?.exceptions ?? []} />
+    </div>
+  );
+}
+
+function ExceptionsSection({ userId, exceptions }: { userId: string; exceptions: AvailabilityException[] }) {
+  const queryClient = useQueryClient();
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({
+    exceptionDate: '',
+    isAvailable: true,
+    startTime: '',
+    endTime: '',
+    reason: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function onAdd() {
+    if (!form.exceptionDate) { toast.error('Date is required'); return; }
+    setSaving(true);
+    try {
+      await apiClient.post(`/users/${userId}/availability/exceptions`, {
+        exceptionDate: form.exceptionDate,
+        isAvailable: form.isAvailable,
+        startTime: form.startTime || null,
+        endTime: form.endTime || null,
+        reason: form.reason || null,
+      });
+      toast.success('Exception added');
+      setAddOpen(false);
+      setForm({ exceptionDate: '', isAvailable: true, startTime: '', endTime: '', reason: '' });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.availability(userId) });
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to add exception');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onDelete(exceptionId: string) {
+    try {
+      await apiClient.delete(`/users/${userId}/availability/exceptions/${exceptionId}`);
+      toast.success('Exception removed');
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.availability(userId) });
+    } catch {
+      toast.error('Failed to remove exception');
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-medium text-muted-foreground">Date exceptions</p>
+        <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => setAddOpen(true)}>
+          <PlusIcon className="mr-0.5 size-2.5" /> Add exception
+        </Button>
+      </div>
+      {exceptions.length === 0 && (
+        <p className="text-xs text-muted-foreground">No date-specific exceptions set.</p>
       )}
+      <ul className="space-y-1">
+        {exceptions.map((ex) => (
+          <li key={ex.id} className="flex items-center justify-between rounded border border-border bg-muted px-2 py-1.5 text-xs">
+            <div>
+              <span className="font-medium text-foreground">{ex.exceptionDate}</span>
+              {' — '}
+              <span className={ex.isAvailable ? 'text-green-600' : 'text-destructive'}>
+                {ex.isAvailable ? 'Available' : 'Unavailable'}
+              </span>
+              {ex.startTime && <span className="text-muted-foreground"> {ex.startTime}–{ex.endTime}</span>}
+              {ex.reason && <span className="italic text-muted-foreground"> ({ex.reason})</span>}
+            </div>
+            <button onClick={() => onDelete(ex.id)} className="text-muted-foreground hover:text-destructive">
+              <Trash2Icon className="size-3" />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add date exception</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Date *</label>
+              <Input type="date" value={form.exceptionDate} onChange={(e) => setForm((f) => ({ ...f, exceptionDate: e.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Available on this date?</label>
+              <select
+                className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm"
+                value={form.isAvailable ? 'yes' : 'no'}
+                onChange={(e) => setForm((f) => ({ ...f, isAvailable: e.target.value === 'yes' }))}
+              >
+                <option value="no">No — blocked (unavailable all day)</option>
+                <option value="yes">Yes — available (optionally specify hours)</option>
+              </select>
+            </div>
+            {form.isAvailable && (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Start time</label>
+                  <Input type="time" value={form.startTime} onChange={(e) => setForm((f) => ({ ...f, startTime: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">End time</label>
+                  <Input type="time" value={form.endTime} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} />
+                </div>
+              </div>
+            )}
+            <div className="space-y-1">
+              <label className="text-sm font-medium">Reason (optional)</label>
+              <Input value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} placeholder="e.g. doctor's appointment" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)}>Cancel</Button>
+            <Button onClick={onAdd} disabled={saving}>Add exception</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

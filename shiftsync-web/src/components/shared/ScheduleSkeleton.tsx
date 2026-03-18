@@ -11,13 +11,13 @@ export function ScheduleCalendarSkeleton({ week }: { week: string }) {
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[700px]">
-        <div className="grid grid-cols-[56px_1fr] border-b border-slate-700">
-          <div className="border-r border-slate-700 p-1" />
-          <div className="grid grid-cols-7 border-slate-700">
+        <div className="grid grid-cols-[56px_1fr] border-b border-border">
+          <div className="border-r border-border p-1" />
+          <div className="grid grid-cols-7 border-border">
             {dayLabels.map((d, i) => (
               <div
                 key={i}
-                className="border-r border-slate-700 p-1 text-center text-xs text-slate-500 last:border-r-0"
+                className="border-r border-border p-1 text-center text-xs text-muted-foreground last:border-r-0"
               >
                 {d.short} {d.date}
               </div>
@@ -25,16 +25,16 @@ export function ScheduleCalendarSkeleton({ week }: { week: string }) {
           </div>
         </div>
         <div className="grid grid-cols-[56px_1fr]">
-          <div className="border-r border-slate-700">
+          <div className="border-r border-border">
             {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="h-8 border-b border-slate-800 p-0.5 text-[10px] text-slate-500">
+              <div key={i} className="h-8 border-b border-border p-0.5 text-[10px] text-muted-foreground">
                 {i * 2 + 6}:00
               </div>
             ))}
           </div>
           <div className="grid grid-cols-7">
             {Array.from({ length: 7 * 8 }, (_, i) => (
-              <div key={i} className="h-8 border-b border-r border-slate-800 last:border-r-0">
+              <div key={i} className="h-8 border-b border-r border-border last:border-r-0">
                 {i % 7 === 2 && Math.floor(i / 7) === 3 && (
                   <Skeleton className="m-1 h-6 w-3/4 rounded" />
                 )}

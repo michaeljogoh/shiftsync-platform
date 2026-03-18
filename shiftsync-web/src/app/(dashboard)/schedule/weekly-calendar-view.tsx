@@ -81,27 +81,27 @@ export function WeeklyCalendarView({
     <div className="overflow-x-auto">
       <div className="min-w-[700px]">
         {/* Header row: day labels */}
-        <div className="grid grid-cols-[56px_1fr] border-b border-slate-700">
-          <div className="border-r border-slate-700 p-1 text-xs text-slate-500" />
-          <div className="grid grid-cols-7 border-slate-700">
+        <div className="grid grid-cols-[56px_1fr] border-b border-border">
+          <div className="border-r border-border p-1 text-xs text-muted-foreground" />
+          <div className="grid grid-cols-7 border-border">
             {dayLabels.map((d) => (
               <div
                 key={d.index}
-                className="border-r border-slate-700 p-1 text-center text-xs font-medium text-slate-300 last:border-r-0"
+                className="border-r border-border p-1 text-center text-xs font-medium text-foreground last:border-r-0"
               >
                 <div>{d.short}</div>
-                <div className="text-slate-500">{d.date}</div>
+                <div className="text-muted-foreground">{d.date}</div>
               </div>
             ))}
           </div>
         </div>
         {/* Time grid */}
         <div className="grid grid-cols-[56px_1fr]">
-          <div className="border-r border-slate-700">
+          <div className="border-r border-border">
             {Array.from({ length: TOTAL_SLOTS }, (_, i) => (
               <div
                 key={i}
-                className="h-6 border-b border-slate-800/50 pr-1 text-right text-[10px] text-slate-500"
+                className="h-6 border-b border-border pr-1 text-right text-[10px] text-muted-foreground"
               >
                 {i % 2 === 0 ? slotIndexToLabel(i) : ''}
               </div>
@@ -111,13 +111,13 @@ export function WeeklyCalendarView({
             {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
               <div
                 key={dayIndex}
-                className="relative border-r border-slate-700 last:border-r-0"
+                className="relative border-r border-border last:border-r-0"
                 style={{ minHeight: TOTAL_SLOTS * 24 }}
               >
                 {Array.from({ length: TOTAL_SLOTS }, (_, slotIndex) => (
                   <div
                     key={slotIndex}
-                    className="h-6 border-b border-slate-800/30"
+                    className="h-6 border-b border-border"
                     data-slot={`${dayIndex}-${slotIndex}`}
                   />
                 ))}
@@ -141,14 +141,14 @@ export function WeeklyCalendarView({
                         type="button"
                         className={cn(
                           'absolute left-0.5 right-0.5 z-10 overflow-hidden rounded border text-left text-xs transition hover:opacity-90',
-                          shift.status === 'draft' && 'border-slate-600 bg-slate-700/90 text-slate-200',
+                          shift.status === 'draft' && 'border-border bg-muted text-foreground',
                           shift.status === 'published' &&
                             !isUnder &&
                             !isOver &&
                             'border-primary/50 bg-primary/20 text-primary-foreground',
-                          shift.status === 'published' && isUnder && 'border-amber-500/60 bg-amber-500/20 text-amber-100',
-                          shift.status === 'published' && isOver && 'border-blue-500/60 bg-blue-500/20 text-blue-100',
-                          shift.status === 'cancelled' && 'border-slate-600 bg-slate-800/70 text-slate-400 line-through',
+                          shift.status === 'published' && isUnder && 'border-primary/60 bg-primary/20 text-primary-foreground',
+                          shift.status === 'published' && isOver && 'border-destructive/60 bg-destructive/20 text-destructive-foreground',
+                          shift.status === 'cancelled' && 'border-border bg-muted text-muted-foreground line-through',
                         )}
                         style={{
                           top: pos.slotStart * 24,
@@ -162,7 +162,7 @@ export function WeeklyCalendarView({
                         <div className="truncate px-1 font-medium">
                           {shift.title || 'Shift'}
                           {premium && (
-                            <StarIcon className="ml-0.5 inline size-3 fill-amber-400 text-amber-400" />
+                            <StarIcon className="ml-0.5 inline size-3 fill-primary text-primary" />
                           )}
                         </div>
                         <div className="truncate px-1 text-[10px] opacity-90">

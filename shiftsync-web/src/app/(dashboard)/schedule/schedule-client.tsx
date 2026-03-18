@@ -26,6 +26,7 @@ import { ScheduleListView } from './schedule-list-view';
 import { ShiftDetailSheet } from './shift-detail-sheet';
 import { CreateShiftForm } from './create-shift-form';
 import { AssignStaffModal } from './assign-staff-modal';
+import { ShiftEditModal } from './shift-edit-modal';
 
 async function fetchShiftsClient(
   locationId: string | undefined,
@@ -74,6 +75,8 @@ export function ScheduleClient({
   const [detailOpen, setDetailOpen] = useState(false);
   const [assignShift, setAssignShift] = useState<ShiftSummary | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [editShift, setEditShift] = useState<ShiftSummary | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const searchParams = useSearchParams();
   const [mobileDayIndex, setMobileDayIndex] = useState<number>(() => {
@@ -119,10 +122,10 @@ export function ScheduleClient({
   const setWeek = useCallback(
     (newWeek: string) => {
       setActiveWeek(weekStringToMonday(newWeek));
-      const url = new URL(pathname ?? '/schedule');
-      url.searchParams.set('week', newWeek);
-      if (locationId) url.searchParams.set('locationId', locationId);
-      router.push(url.pathname + url.search);
+      const params = new URLSearchParams();
+      params.set('week', newWeek);
+      if (locationId) params.set('locationId', locationId);
+      router.push(`${pathname ?? '/schedule'}?${params.toString()}`);
     },
     [pathname, locationId, router, setActiveWeek],
   );
@@ -156,7 +159,7 @@ export function ScheduleClient({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-slate-50">Schedule</h1>
+          <h1 className="text-lg font-semibold text-foreground">Schedule</h1>
         </div>
         <ScheduleControls
           week={week}
@@ -197,7 +200,7 @@ export function ScheduleClient({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-50">Schedule</h1>
+        <h1 className="text-lg font-semibold text-foreground">Schedule</h1>
       </div>
       <ScheduleControls
         week={week}
@@ -212,8 +215,8 @@ export function ScheduleClient({
         hasDrafts={hasDrafts}
       />
       {shifts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-slate-700 bg-slate-900/50 px-6 py-12 text-center">
-          <p className="text-sm font-medium text-slate-200">No shifts scheduled yet.</p>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-border bg-card px-6 py-12 text-center">
+          <p className="text-sm font-medium text-foreground">No shifts scheduled yet.</p>
           <Button className="mt-4" onClick={() => setCreateOpen(true)}>
             + Add Shift
           </Button>
@@ -243,6 +246,10 @@ export function ScheduleClient({
             setDetailShiftId(s.id);
             setDetailOpen(true);
           }}
+          onEdit={(s) => {
+            setEditShift(s);
+            setEditOpen(true);
+          }}
           onPublish={async (s) => {
             try {
               await apiClient.post(`/shifts/${s.id}/publish`);
@@ -263,11 +270,28 @@ export function ScheduleClient({
           setAssignShift(shift);
           setAssignOpen(true);
         }}
+        onEdit={(shift) => {
+          setDetailOpen(false);
+          setEditShift(shift);
+          setEditOpen(true);
+        }}
         afterMutation={() =>
           queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() })
         }
         openAssignIfUnderstaffed={
           searchParams.get('openAssign') === '1' && searchParams.get('shiftId') === detailShiftId
+        }
+      />
+      <ShiftEditModal
+        shift={editShift}
+        skills={skills}
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditShift(null);
+        }}
+        afterMutation={() =>
+          queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() })
         }
       />
       <AssignStaffModal

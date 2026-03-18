@@ -31,33 +31,33 @@ export function OvertimeWarningModal() {
     <Dialog open={!!overtimeWarning} onOpenChange={(open) => !open && closeOvertimeWarning()}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-amber-500">
+          <DialogTitle className="flex items-center gap-2 text-primary">
             <AlertTriangleIcon className="size-5 shrink-0" />
             Assignment created — overtime warning
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground">
             Adding this shift will bring <strong>{userName}</strong> to{' '}
             <strong>{projectedWeeklyHours} hours</strong> this week — approaching
             overtime.
           </p>
           <div>
-            <div className="mb-1 flex justify-between text-xs text-slate-400">
+            <div className="mb-1 flex justify-between text-xs text-muted-foreground">
               <span>Weekly hours</span>
               <span>
                 {projectedWeeklyHours}h / {limitHours}h limit
               </span>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-amber-500 transition-all"
+                className="h-full rounded-full bg-primary transition-all"
                 style={{ width: `${progressPct}%` }}
               />
             </div>
           </div>
           {estimatedOvertimeCost != null && estimatedOvertimeCost > 0 && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-muted-foreground">
               Estimated additional cost if they reach 40h: ~$
               {estimatedOvertimeCost.toFixed(2)}/hr for any hours beyond 40.
             </p>

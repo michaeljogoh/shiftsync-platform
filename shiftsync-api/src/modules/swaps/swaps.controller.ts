@@ -31,6 +31,7 @@ import {
   CurrentUser,
 } from '../../common/decorators/auth.decorators';
 import type { SessionUser } from '../auth/auth.types';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 
 @ApiTags('Swaps')
 @ApiBearerAuth()
@@ -41,6 +42,7 @@ export class SwapsController {
 
   @Post()
   @RequirePermission('swaps:create')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Create swap or drop request' })
   async create(@CurrentUser() user: SessionUser, @Body() dto: CreateSwapDto) {
     return this.swapsService.create(dto, user.id);
@@ -66,6 +68,7 @@ export class SwapsController {
 
   @Patch(':id/accept')
   @RequirePermission('swaps:view')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Accept swap (target staff)' })
   async accept(
     @CurrentUser() user: SessionUser,
@@ -77,6 +80,7 @@ export class SwapsController {
 
   @Patch(':id/reject')
   @RequirePermission('swaps:view')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Reject swap (target staff)' })
   async reject(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.swapsService.reject(id, user.id);
@@ -84,6 +88,7 @@ export class SwapsController {
 
   @Patch(':id/cancel')
   @RequirePermission('swaps:view')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Cancel (initiator)' })
   async cancel(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.swapsService.cancel(id, user.id);
@@ -92,6 +97,7 @@ export class SwapsController {
   @Patch(':id/approve')
   @RequirePermission('swaps:approve')
   @Roles('admin', 'manager')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Approve (manager)' })
   async approve(@CurrentUser() user: SessionUser, @Param('id') id: string) {
     return this.swapsService.approve(id, user.id);
@@ -100,6 +106,7 @@ export class SwapsController {
   @Patch(':id/deny')
   @RequirePermission('swaps:deny')
   @Roles('admin', 'manager')
+  @Auditable('swap')
   @ApiOperation({ summary: 'Deny (manager)' })
   async deny(
     @CurrentUser() user: SessionUser,
@@ -107,5 +114,20 @@ export class SwapsController {
     @Body() dto: DenySwapDto,
   ) {
     return this.swapsService.deny(id, user.id, dto.managerNote);
+  }
+
+  @Get('available-drops')
+  @RequirePermission('swaps:view')
+  @ApiOperation({ summary: 'List open drop requests the current user can claim' })
+  async availableDrops(@CurrentUser() user: SessionUser) {
+    return this.swapsService.findAvailableDrops(user.id);
+  }
+
+  @Patch(':id/claim')
+  @RequirePermission('swaps:create')
+  @Auditable('swap')
+  @ApiOperation({ summary: 'Claim an open drop shift' })
+  async claimDrop(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.swapsService.claimDrop(id, user.id);
   }
 }

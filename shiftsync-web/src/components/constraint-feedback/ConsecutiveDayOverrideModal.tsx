@@ -48,33 +48,33 @@ export function ConsecutiveDayOverrideModal() {
     <Dialog open={!!consecutiveDayOverride} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-400">
+          <DialogTitle className="flex items-center gap-2 text-destructive">
             <BanIcon className="size-5 shrink-0" />
             7th consecutive day — override required
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-sm text-slate-200">
+          <p className="text-sm text-foreground">
             <strong>{userName}</strong> would be working their 7th consecutive
             day. This requires documented manager approval.
           </p>
           <div>
             <label
               htmlFor="override-reason"
-              className="text-sm font-medium text-slate-300"
+              className="text-sm font-medium text-muted-foreground"
             >
               Override reason:
             </label>
             <textarea
               id="override-reason"
-              className="mt-1 w-full rounded-md border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder={`Minimum ${MIN_REASON_LENGTH} characters`}
               rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               minLength={MIN_REASON_LENGTH}
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               This reason will be logged in the audit trail.
             </p>
           </div>

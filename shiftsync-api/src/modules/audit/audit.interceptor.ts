@@ -37,7 +37,16 @@ export class AuditInterceptor implements NestInterceptor {
         next: (value: unknown) => {
           const body = request.body ?? {};
           const params = request.params ?? {};
-          const entityId = params.id ?? body.id ?? (value as { id?: string })?.id;
+          const res = (value ?? {}) as Record<string, unknown>;
+          const entityId = params.id ?? body.id ?? res.id;
+          let locationId =
+            body.locationId ??
+            params.locationId ??
+            res.locationId ??
+            null;
+          if (!locationId && entityType === 'location') {
+            locationId = params.id ?? null;
+          }
           if (entityId) {
             this.auditService
               .create({
@@ -48,8 +57,11 @@ export class AuditInterceptor implements NestInterceptor {
                 afterState: body as Record<string, unknown>,
                 ipAddress,
                 userAgent,
+                locationId: locationId ? String(locationId) : null,
               })
-              .catch(() => {});
+              .catch((err) => {
+                console.error('[AuditInterceptor] Failed to save audit log:', err?.message);
+              });
           }
         },
       }),

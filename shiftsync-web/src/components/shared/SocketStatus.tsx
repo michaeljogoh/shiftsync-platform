@@ -32,27 +32,27 @@ export function SocketStatus() {
   }, []);
 
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-400">
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
       {status === 'connected' && (
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-emerald-400" title="Connected" />
+          <span className="size-2 rounded-full bg-primary" title="Connected" />
         </span>
       )}
       {status === 'reconnecting' && (
-        <span className="inline-flex items-center gap-1.5 text-amber-400">
-          <span className="size-2 rounded-full bg-amber-400" />
+        <span className="inline-flex items-center gap-1.5 text-primary">
+          <span className="size-2 rounded-full bg-primary" />
           <span>Reconnecting…</span>
         </span>
       )}
       {status === 'failed' && (
-        <span className="inline-flex items-center gap-1.5 text-red-400">
-          <span className="size-2 rounded-full bg-red-400" />
+        <span className="inline-flex items-center gap-1.5 text-destructive">
+          <span className="size-2 rounded-full bg-destructive" />
           <span>Live updates paused</span>
         </span>
       )}
       {status === 'disconnected' && (
         <span className="inline-flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-slate-500" />
+          <span className="size-2 rounded-full bg-muted-foreground" />
         </span>
       )}
     </div>

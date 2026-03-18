@@ -13,6 +13,7 @@ export interface AuditLogEntry {
   locationId: string | null;
   createdAt: string;
   actor?: { id: string; email: string; firstName: string; lastName: string } | null;
+  location?: { id: string; name: string } | null;
 }
 
 export async function fetchAuditLogs(params: {

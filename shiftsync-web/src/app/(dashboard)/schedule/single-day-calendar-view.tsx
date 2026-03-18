@@ -91,22 +91,22 @@ export function SingleDayCalendarView({
       onTouchEnd={handleTouchEnd}
     >
       {/* Day navigation */}
-      <div className="flex items-center justify-between border-b border-slate-700 bg-slate-900/50 px-2 py-2">
+      <div className="flex items-center justify-between border-b border-border bg-card px-2 py-2">
         <button
           type="button"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-slate-300 hover:bg-slate-700 hover:text-slate-100 disabled:opacity-40"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
           onClick={() => onDayChange(Math.max(0, dayIndex - 1))}
           disabled={dayIndex === 0}
           aria-label="Previous day"
         >
           <ChevronLeftIcon className="size-6" />
         </button>
-        <span className="text-sm font-medium text-slate-100">
+        <span className="text-sm font-medium text-foreground">
           {dayLabel.short} {dayLabel.date}
         </span>
         <button
           type="button"
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-slate-300 hover:bg-slate-700 hover:text-slate-100 disabled:opacity-40"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40"
           onClick={() => onDayChange(Math.min(6, dayIndex + 1))}
           disabled={dayIndex === 6}
           aria-label="Next day"
@@ -116,25 +116,25 @@ export function SingleDayCalendarView({
       </div>
 
       {/* Single-day grid */}
-      <div className="grid grid-cols-[52px_1fr] border-b border-slate-700">
-        <div className="border-r border-slate-700">
+      <div className="grid grid-cols-[52px_1fr] border-b border-border">
+        <div className="border-r border-border">
           {Array.from({ length: TOTAL_SLOTS }, (_, i) => (
             <div
               key={i}
-              className="h-6 border-b border-slate-800/50 pr-1 text-right text-[10px] text-slate-500"
+              className="h-6 border-b border-border/50 pr-1 text-right text-[10px] text-muted-foreground"
             >
               {i % 2 === 0 ? slotIndexToLabel(i) : ''}
             </div>
           ))}
         </div>
         <div
-          className="relative border-slate-700"
+          className="relative border-border"
           style={{ minHeight: TOTAL_SLOTS * 24 }}
         >
           {Array.from({ length: TOTAL_SLOTS }, (_, slotIndex) => (
             <div
               key={slotIndex}
-              className="h-6 border-b border-slate-800/30"
+              className="h-6 border-b border-border/30"
               data-slot={`${dayIndex}-${slotIndex}`}
             />
           ))}
@@ -152,14 +152,14 @@ export function SingleDayCalendarView({
                 type="button"
                 className={cn(
                   'absolute left-0.5 right-0.5 z-10 overflow-hidden rounded border text-left text-xs transition hover:opacity-90 min-h-[44px] touch-manipulation',
-                  shift.status === 'draft' && 'border-slate-600 bg-slate-700/90 text-slate-200',
+                  shift.status === 'draft' && 'border-border bg-muted text-foreground',
                   shift.status === 'published' &&
                     !isUnder &&
                     !isOver &&
                     'border-primary/50 bg-primary/20 text-primary-foreground',
-                  shift.status === 'published' && isUnder && 'border-amber-500/60 bg-amber-500/20 text-amber-100',
-                  shift.status === 'published' && isOver && 'border-blue-500/60 bg-blue-500/20 text-blue-100',
-                  shift.status === 'cancelled' && 'border-slate-600 bg-slate-800/70 text-slate-400 line-through',
+                  shift.status === 'published' && isUnder && 'border-primary/60 bg-primary/20 text-primary-foreground',
+                  shift.status === 'published' && isOver && 'border-destructive/60 bg-destructive/20 text-destructive-foreground',
+                  shift.status === 'cancelled' && 'border-border bg-muted/70 text-muted-foreground line-through',
                 )}
                 style={{
                   top: pos.slotStart * 24,
@@ -173,7 +173,7 @@ export function SingleDayCalendarView({
                 <div className="truncate px-1 font-medium">
                   {shift.title || 'Shift'}
                   {premium && (
-                    <StarIcon className="ml-0.5 inline size-3 fill-amber-400 text-amber-400" />
+                    <StarIcon className="ml-0.5 inline size-3 fill-primary text-primary" />
                   )}
                 </div>
                 <div className="truncate px-1 text-[10px] opacity-90">
@@ -192,7 +192,7 @@ export function SingleDayCalendarView({
           })}
         </div>
       </div>
-      <p className="mt-2 text-center text-xs text-slate-500">Swipe or tap arrows to change day</p>
+      <p className="mt-2 text-center text-xs text-muted-foreground">Swipe or tap arrows to change day</p>
     </div>
   );
 }

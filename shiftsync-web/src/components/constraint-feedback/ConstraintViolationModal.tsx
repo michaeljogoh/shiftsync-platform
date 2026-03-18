@@ -23,19 +23,19 @@ export function ConstraintViolationModal() {
     <Dialog open={!!constraintViolation} onOpenChange={(open) => !open && closeConstraintViolation()}>
       <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-amber-500">
+          <DialogTitle className="flex items-center gap-2 text-primary">
             <AlertTriangleIcon className="size-5 shrink-0" />
             {title}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <p className="text-sm font-medium text-slate-300">Reason:</p>
-            <p className="mt-1 text-sm text-slate-200">{reason}</p>
+            <p className="text-sm font-medium text-muted-foreground">Reason:</p>
+            <p className="mt-1 text-sm text-foreground">{reason}</p>
           </div>
           {suggestions.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-slate-300">
+              <p className="text-sm font-medium text-muted-foreground">
                 Suggested alternatives:
               </p>
               <ul className="mt-2 space-y-3">
@@ -44,18 +44,18 @@ export function ConstraintViolationModal() {
                   return (
                   <li
                     key={s.userId}
-                    className="rounded-lg border border-slate-700 bg-slate-800/50 p-3"
+                    className="rounded-lg border border-border bg-muted p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-start gap-2">
                         {nearOT ? (
-                          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-amber-500" />
+                          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-primary" />
                         ) : (
-                          <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                          <CheckCircleIcon className="mt-0.5 size-4 shrink-0 text-primary" />
                         )}
                         <div>
-                          <p className="font-medium text-slate-100">{s.name}</p>
-                          <p className="text-xs text-slate-400">{s.reason}</p>
+                          <p className="font-medium text-foreground">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">{s.reason}</p>
                         </div>
                       </div>
                       <Button

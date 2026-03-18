@@ -20,12 +20,20 @@ export const createShiftSchema = z
     startAt: z
       .string()
       .min(1, 'Start time is required')
-      .transform((s) => (s.length === 16 ? `${s}:00` : s))
+      .transform((s) => {
+        if (s.length === 16) s = `${s}:00`;
+        if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s = `${s}Z`;
+        return s;
+      })
       .pipe(z.string().datetime({ message: 'Invalid start datetime' })),
     endAt: z
       .string()
       .min(1, 'End time is required')
-      .transform((s) => (s.length === 16 ? `${s}:00` : s))
+      .transform((s) => {
+        if (s.length === 16) s = `${s}:00`;
+        if (!s.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(s)) s = `${s}Z`;
+        return s;
+      })
       .pipe(z.string().datetime({ message: 'Invalid end datetime' })),
     headcountNeeded: z.coerce.number().int().min(1).max(50),
     editCutoffHours: z.coerce.number().int().min(0).optional(),

@@ -161,6 +161,7 @@ export class ShiftsService {
     const cutoffHours = shift.editCutoffHours ?? 48;
     const cutoffMs = cutoffHours * 60 * 60 * 1000;
     if (
+      actor.role !== 'admin' &&
       shift.status === 'published' &&
       shift.startAt.getTime() - Date.now() < cutoffMs
     ) {
@@ -175,7 +176,8 @@ export class ShiftsService {
         shift.startAt = parseDateTimeForLocation(dto.startAt.trim(), tz);
         shift.isPremium = computeIsPremium(shift.startAt, tz);
       }
-      if (dto.endAt) shift.endAt = parseDateTimeForLocation(dto.endAt.trim(), tz);
+      if (dto.endAt)
+        shift.endAt = parseDateTimeForLocation(dto.endAt.trim(), tz);
     } catch {
       throw new BadRequestException(
         'Invalid startAt/endAt. Use ISO 8601 with optional offset; without offset, times are interpreted in the location timezone.',
@@ -196,15 +198,23 @@ export class ShiftsService {
     if (assignmentIds.length > 0) {
       await this.swapsService.handleShiftEdited(id, assignmentIds);
     }
-    this.realtimeService.emitToLocation(shift.locationId, RealtimeEvents.SCHEDULE_UPDATED, {
-      shiftId: id,
-      locationId: shift.locationId,
-    });
-    if (shift.status === 'cancelled') {
-      this.realtimeService.emitToLocation(shift.locationId, RealtimeEvents.SHIFT_CANCELLED, {
+    this.realtimeService.emitToLocation(
+      shift.locationId,
+      RealtimeEvents.SCHEDULE_UPDATED,
+      {
         shiftId: id,
         locationId: shift.locationId,
-      });
+      },
+    );
+    if (shift.status === 'cancelled') {
+      this.realtimeService.emitToLocation(
+        shift.locationId,
+        RealtimeEvents.SHIFT_CANCELLED,
+        {
+          shiftId: id,
+          locationId: shift.locationId,
+        },
+      );
     }
     return withLocalTimeDisplay(shift, tz) as Shift;
   }
@@ -218,7 +228,11 @@ export class ShiftsService {
   }
 
   async publish(id: string): Promise<PublishResult> {
-    const shift = await this.findById(id, ['assignments', 'assignments.user', 'location']);
+    const shift = await this.findById(id, [
+      'assignments',
+      'assignments.user',
+      'location',
+    ]);
     if (shift.status !== 'draft') {
       throw new ConflictException('Only draft shifts can be published');
     }
@@ -246,11 +260,15 @@ export class ShiftsService {
     shift.publishedAt = new Date();
     await this.shiftsRepo.save(shift);
 
-    this.realtimeService.emitToLocation(shift.locationId, RealtimeEvents.SCHEDULE_PUBLISHED, {
-      shiftId: shift.id,
-      locationId: shift.locationId,
-      publishedAt: shift.publishedAt,
-    });
+    this.realtimeService.emitToLocation(
+      shift.locationId,
+      RealtimeEvents.SCHEDULE_PUBLISHED,
+      {
+        shiftId: shift.id,
+        locationId: shift.locationId,
+        publishedAt: shift.publishedAt,
+      },
+    );
 
     const assigned = shift.assignments ?? [];
     for (const a of assigned) {
@@ -271,13 +289,20 @@ export class ShiftsService {
     }
 
     return {
-      shift: withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift,
+      shift: withLocalTimeDisplay(
+        shift,
+        shift.location?.ianaTimezone ?? 'UTC',
+      ) as Shift,
       warnings: warnings.length > 0 ? warnings : undefined,
     };
   }
 
   async unpublish(id: string): Promise<Shift> {
-    const shift = await this.findById(id);
+    const shift = await this.findById(id, [
+      'location',
+      'assignments',
+      'assignments.user',
+    ]);
     if (shift.status !== 'published') {
       throw new ConflictException('Only published shifts can be unpublished');
     }
@@ -290,8 +315,36 @@ export class ShiftsService {
     shift.status = 'draft';
     shift.publishedAt = null;
     await this.shiftsRepo.save(shift);
-    const withLocation = await this.findById(id, ['location']);
-    return withLocalTimeDisplay(shift, withLocation.location?.ianaTimezone ?? 'UTC') as Shift;
+
+    this.realtimeService.emitToLocation(
+      shift.locationId,
+      RealtimeEvents.SCHEDULE_UPDATED,
+      {
+        shiftId: id,
+        locationId: shift.locationId,
+        action: 'unpublished',
+      },
+    );
+
+    const assigned = shift.assignments ?? [];
+    for (const a of assigned) {
+      if (a.status === 'cancelled' || a.status === 'dropped') continue;
+      if (a.user?.notifyInApp) {
+        await this.notificationsService.create({
+          userId: a.userId,
+          type: NotificationType.SCHEDULE_PUBLISHED,
+          title: 'Schedule unpublished',
+          body: 'A shift you were assigned to has been moved back to draft.',
+          referenceType: 'shift',
+          referenceId: shift.id,
+        });
+      }
+    }
+
+    return withLocalTimeDisplay(
+      shift,
+      shift.location?.ianaTimezone ?? 'UTC',
+    ) as Shift;
   }
 
   async getAssignments(shiftId: string): Promise<Shift['assignments']> {
@@ -324,7 +377,10 @@ export class ShiftsService {
       'assignments.user',
     ]);
     if (actor.role === 'admin') {
-      return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
+      return withLocalTimeDisplay(
+        shift,
+        shift.location?.ianaTimezone ?? 'UTC',
+      ) as Shift;
     }
     if (actor.role === 'manager') {
       const manager = await this.usersRepo.findOne({
@@ -335,12 +391,18 @@ export class ShiftsService {
       if (!managedIds.includes(shift.locationId)) {
         throw new ForbiddenException('No access to this shift');
       }
-      return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
+      return withLocalTimeDisplay(
+        shift,
+        shift.location?.ianaTimezone ?? 'UTC',
+      ) as Shift;
     }
     const isAssigned = (shift.assignments ?? []).some(
       (a) => a.userId === actor.id,
     );
     if (!isAssigned) throw new ForbiddenException('No access to this shift');
-    return withLocalTimeDisplay(shift, shift.location?.ianaTimezone ?? 'UTC') as Shift;
+    return withLocalTimeDisplay(
+      shift,
+      shift.location?.ianaTimezone ?? 'UTC',
+    ) as Shift;
   }
 }

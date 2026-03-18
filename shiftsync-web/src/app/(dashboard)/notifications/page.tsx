@@ -10,7 +10,7 @@ import { NotificationsClient } from './notifications-client';
 export default async function NotificationsPage() {
   const session = await getServerSession();
   if (!session) {
-    return <div className="text-sm text-slate-300">Not authenticated.</div>;
+    return <div className="text-sm text-muted-foreground">Not authenticated.</div>;
   }
 
   const queryClient = makeQueryClient();

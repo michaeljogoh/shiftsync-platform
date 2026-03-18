@@ -454,11 +454,149 @@ export class SwapsService {
     return this.swapsRepo.find({
       where: [{ initiatorId: userId }, { targetUserId: userId }],
       relations: [
+        'initiator',
+        'targetUser',
         'initiatorAssignment',
         'initiatorAssignment.shift',
+        'initiatorAssignment.shift.location',
+        'initiatorAssignment.shift.requiredSkill',
         'targetAssignment',
+        'targetAssignment.shift',
       ],
       order: { createdAt: 'DESC' },
     });
+  }
+
+  /**
+   * Returns all open drop requests (pending_manager, type='drop') for shifts the requesting
+   * user is qualified to cover (certified for the location, has required skill, is available,
+   * no double-booking). Excludes drops initiated by the requesting user.
+   */
+  async findAvailableDrops(userId: string): Promise<SwapRequest[]> {
+    const drops = await this.swapsRepo
+      .createQueryBuilder('s')
+      .leftJoinAndSelect('s.initiator', 'initiator')
+      .leftJoinAndSelect('s.initiatorAssignment', 'ia')
+      .leftJoinAndSelect('ia.shift', 'shift')
+      .leftJoinAndSelect('shift.location', 'loc')
+      .leftJoinAndSelect('shift.requiredSkill', 'skill')
+      .where('s.type = :type', { type: 'drop' })
+      .andWhere('s.status = :status', { status: 'pending_manager' })
+      .andWhere('s.initiatorId != :userId', { userId })
+      .andWhere('s.expiresAt > :now', { now: new Date() })
+      .andWhere('shift.startAt > :now', { now: new Date() })
+      .orderBy('shift.startAt', 'ASC')
+      .getMany();
+
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: ['skills', 'locationCertifications'],
+    });
+    if (!user) return [];
+
+    const eligible: SwapRequest[] = [];
+    for (const drop of drops) {
+      const shift = drop.initiatorAssignment?.shift;
+      if (!shift) continue;
+
+      const hasSkill = user.skills?.some((sk) => sk.id === shift.requiredSkillId);
+      if (!hasSkill) continue;
+
+      const cert = user.locationCertifications?.find(
+        (c) => c.locationId === shift.locationId && !c.revokedAt,
+      );
+      if (!cert) continue;
+
+      eligible.push(drop);
+    }
+
+    return eligible;
+  }
+
+  /**
+   * Staff claims an open drop shift. Creates a new assignment for the claimer on the dropped
+   * shift (validated) and marks the swap as approved.
+   */
+  async claimDrop(swapId: string, claimerId: string): Promise<SwapRequest> {
+    const swap = await this.findById(swapId);
+    if (swap.type !== 'drop') {
+      throw new ConflictException('Only drop requests can be claimed');
+    }
+    if (swap.status !== 'pending_manager') {
+      throw new ConflictException('Drop request is not available to claim');
+    }
+    if (swap.initiatorId === claimerId) {
+      throw new ForbiddenException('Cannot claim your own drop');
+    }
+    if (new Date() >= (swap.expiresAt ?? new Date(0))) {
+      throw new ConflictException('Drop request has expired');
+    }
+
+    const initAssignment = await this.assignmentsRepo.findOne({
+      where: { id: swap.initiatorAssignmentId },
+      relations: ['shift', 'shift.location', 'shift.requiredSkill'],
+    });
+    if (!initAssignment) throw new NotFoundException('Assignment not found');
+
+    const validation = await this.assignmentsService.validateOnly(
+      initAssignment.shiftId,
+      claimerId,
+    );
+    if (!validation.valid) {
+      throw new UnprocessableEntityException(
+        `Cannot claim: ${validation.message}`,
+      );
+    }
+
+    initAssignment.status = 'dropped';
+    await this.assignmentsRepo.save(initAssignment);
+
+    const newAssignment = this.assignmentsRepo.create({
+      shiftId: initAssignment.shiftId,
+      userId: claimerId,
+      assignedBy: claimerId,
+      status: 'confirmed',
+    });
+    await this.assignmentsRepo.save(newAssignment);
+
+    swap.status = 'approved';
+    swap.targetUserId = claimerId;
+    swap.reviewedBy = claimerId;
+    swap.reviewedAt = new Date();
+    swap.targetNote = 'Claimed by staff member';
+    await this.swapsRepo.save(swap);
+
+    await this.notificationsService.create({
+      userId: swap.initiatorId,
+      type: NotificationType.DROP_PICKED_UP,
+      title: 'Drop claimed',
+      body: 'Your drop request was picked up.',
+      referenceType: 'swap',
+      referenceId: swap.id,
+    });
+    await this.notificationsService.create({
+      userId: claimerId,
+      type: NotificationType.DROP_PICKED_UP,
+      title: 'Shift picked up',
+      body: 'You successfully picked up the shift.',
+      referenceType: 'swap',
+      referenceId: swap.id,
+    });
+
+    const locationId = initAssignment.shift?.locationId;
+    if (locationId) {
+      this.realtimeService.emitToLocation(locationId, RealtimeEvents.SWAP_MANAGER_ACTION, {
+        swapId: swap.id,
+        action: 'drop_claimed',
+        claimedBy: claimerId,
+      });
+    }
+    this.realtimeService.emitToRooms(
+      [swap.initiatorId, claimerId].map((uid) => `user_${uid}`),
+      RealtimeEvents.SWAP_STATUS_CHANGED,
+      { swapId: swap.id, status: swap.status },
+    );
+
+    return swap;
   }
 }

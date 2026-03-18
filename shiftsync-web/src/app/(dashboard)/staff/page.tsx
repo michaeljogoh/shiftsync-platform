@@ -6,7 +6,7 @@ import { StaffClient } from './staff-client';
 export default async function StaffPage() {
   const session = await getServerSession();
   if (!session) {
-    return <div className="text-sm text-slate-300">Not authenticated.</div>;
+    return <div className="text-sm text-muted-foreground">Not authenticated.</div>;
   }
 
   let locations: Awaited<ReturnType<typeof fetchLocations>> = [];

@@ -20,6 +20,7 @@ export interface UserSummary {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string | null;
   role: 'admin' | 'manager' | 'staff';
   isActive: boolean;
   desiredHoursPerWeek: string | null;

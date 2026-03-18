@@ -16,6 +16,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermission, Roles } from '../../common/decorators/auth.decorators';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 
 @ApiTags('Skills')
 @ApiBearerAuth()
@@ -34,6 +35,7 @@ export class SkillsController {
   @Post()
   @RequirePermission('skills:create')
   @Roles('admin')
+  @Auditable('skill')
   @ApiOperation({ summary: 'Create skill (Admin)' })
   async create(@Body() dto: CreateSkillDto) {
     return this.skillsService.create(dto);
@@ -49,6 +51,7 @@ export class SkillsController {
   @Patch(':id')
   @RequirePermission('skills:update')
   @Roles('admin')
+  @Auditable('skill')
   @ApiOperation({ summary: 'Update skill (Admin)' })
   async update(@Param('id') id: string, @Body() dto: UpdateSkillDto) {
     return this.skillsService.update(id, dto);
@@ -57,6 +60,7 @@ export class SkillsController {
   @Delete(':id')
   @RequirePermission('skills:delete')
   @Roles('admin')
+  @Auditable('skill')
   @ApiOperation({ summary: 'Delete skill (Admin)' })
   async remove(@Param('id') id: string) {
     await this.skillsService.remove(id);
