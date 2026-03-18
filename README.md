@@ -19,6 +19,8 @@ Built with a **NestJS REST API** (`shiftsync-api`) and a **Next.js 14 web fronte
 10. [Known Limitations](#known-limitations)
 11. [Assumptions and Design Decisions](#assumptions-and-design-decisions)
 
+12. [Deploy (Render)](#deploy-render)
+
 ---
 
 ## Architecture
@@ -29,6 +31,16 @@ Built with a **NestJS REST API** (`shiftsync-api`) and a **Next.js 14 web fronte
 | Web | Next.js 14 App Router, React Query v5, Zustand, Shadcn/ui | 3001 |
 | Database | PostgreSQL (Neon serverless in `.env`; swap for local Postgres) | — |
 | Email | Postmark (silent no-op if token missing) | — |
+
+## Swagger Docs 
+
+- **Docs (NestJS)**: `https://shiftsync-platform.onrender.com/api/vi/docs`
+
+---
+## Deploy (Render)
+
+- **API (NestJS)**: `https://shiftsync-platform.onrender.com/`
+- **Web (Next.js)**: `https://shiftsync-platform-c2uk.onrender.com/login`
 
 ---
 

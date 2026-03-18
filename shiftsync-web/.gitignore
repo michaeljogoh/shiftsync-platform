@@ -3,6 +3,11 @@
 /node_modules
 /build
 
+# Next.js build output
+.next/
+out/
+dist/
+
 # Logs
 logs
 *.log

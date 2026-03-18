@@ -31,11 +31,10 @@ async function bootstrap() {
   );
 
   // Swagger UI at /api/docs in non-production
-  if (nodeEnv !== 'production') {
     const document = SwaggerModule.createDocument(app, swaggerConfig);
     SwaggerModule.setup('api/docs', app, document);
-    Logger.log(`Swagger UI at http://localhost:${port}/api/docs`);
-  }
+    Logger.log(`Swagger UI at  baseurl/api/docs`);
+
 
   await app.listen(port);
   Logger.log(`ShiftSync API listening on http://localhost:${port}/api/v1`);
