@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import Link from 'next/link';
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
@@ -127,7 +128,7 @@ export function NotificationsClient() {
               <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
                 {unreadCount} unread
               </span>
-              <Button size="sm" variant="outline" onClick={handleMarkAllRead}>
+              <Button size="sm" variant="outline" className="min-h-[44px]" onClick={handleMarkAllRead}>
                 Mark all read
               </Button>
             </>
@@ -206,19 +207,20 @@ function NotificationCard({
         // ignore
       }
     }
-    if (n.referenceType && n.referenceId) {
-      // Navigate to entity - could use router.push based on type
-    }
   };
 
-  return (
-    <li>
-      <Card
-        className={`cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/50 ${
-          n.isRead ? 'bg-slate-900/30' : 'bg-slate-900/60'
-        }`}
-        onClick={handleClick}
-      >
+  const href =
+    n.referenceType === 'shift' && n.referenceId
+      ? `/schedule?shiftId=${encodeURIComponent(n.referenceId)}&openAssign=1`
+      : null;
+
+  const content = (
+    <Card
+      className={`cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/50 ${
+        n.isRead ? 'bg-slate-900/30' : 'bg-slate-900/60'
+      }`}
+      onClick={handleClick}
+    >
         <CardHeader className="py-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -236,6 +238,17 @@ function NotificationCard({
           </div>
         </CardHeader>
       </Card>
+  );
+
+  return (
+    <li>
+      {href ? (
+        <Link href={href} className="block">
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
     </li>
   );
 }

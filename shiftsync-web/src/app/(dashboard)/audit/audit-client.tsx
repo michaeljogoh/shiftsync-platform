@@ -52,10 +52,15 @@ export function AuditClient({ locations }: AuditClientProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-slate-50">Audit Log</h1>
         <PermissionGate require="audit:export">
-          <Button size="sm" variant="outline" onClick={handleExport}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] sm:min-h-0"
+            onClick={handleExport}
+          >
             Export CSV
           </Button>
         </PermissionGate>
@@ -66,19 +71,19 @@ export function AuditClient({ locations }: AuditClientProps) {
           <input
             type="text"
             placeholder="Entity type"
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={entityType}
             onChange={(e) => setEntityType(e.target.value)}
           />
           <input
             type="text"
             placeholder="Actor ID"
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={actorId}
             onChange={(e) => setActorId(e.target.value)}
           />
           <select
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={locationId}
             onChange={(e) => setLocationId(e.target.value)}
           >
@@ -93,8 +98,8 @@ export function AuditClient({ locations }: AuditClientProps) {
 
         {isLoading && <div className="text-sm text-slate-400">Loading…</div>}
         {!isLoading && (
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-slate-700 bg-slate-900/70">
                   <th className="px-3 py-2 text-left font-medium text-slate-300">Timestamp</th>
@@ -127,11 +132,23 @@ export function AuditClient({ locations }: AuditClientProps) {
             )}
           </div>
         )}
-        <div className="flex justify-between pt-2">
-          <Button size="sm" variant="outline" disabled={offset === 0} onClick={() => setOffset((o) => Math.max(0, o - limit))}>
+        <div className="flex justify-between gap-2 pt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] sm:min-h-0"
+            disabled={offset === 0}
+            onClick={() => setOffset((o) => Math.max(0, o - limit))}
+          >
             Previous
           </Button>
-          <Button size="sm" variant="outline" disabled={logs.length < limit} onClick={() => setOffset((o) => o + limit)}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] sm:min-h-0"
+            disabled={logs.length < limit}
+            onClick={() => setOffset((o) => o + limit)}
+          >
             Next
           </Button>
         </div>

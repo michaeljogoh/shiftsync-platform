@@ -219,7 +219,7 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
       </div>
       <div className="flex items-center justify-between border-t border-slate-800 pt-2">
         <p className="text-xs text-slate-500">Exceptions: add via date picker + available/unavailable (coming soon).</p>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving…' : 'Save availability'}
         </Button>
       </div>

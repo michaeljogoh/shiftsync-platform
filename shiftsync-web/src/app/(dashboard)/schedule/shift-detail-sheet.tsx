@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -18,7 +19,6 @@ import type { ShiftSummary } from '@/lib/api/server/shifts';
 import { formatShiftTimeRange } from '@/lib/format-shift-time';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { PencilIcon, UserPlusIcon, HistoryIcon } from 'lucide-react';
-import { useState } from 'react';
 
 interface ShiftDetailSheetProps {
   shiftId: string | null;
@@ -27,6 +27,8 @@ interface ShiftDetailSheetProps {
   onAssign?: (shift: ShiftSummary) => void;
   onEdit?: (shift: ShiftSummary) => void;
   afterMutation?: () => void;
+  /** Scenario 1: When true and shift is understaffed, assign modal opens automatically. */
+  openAssignIfUnderstaffed?: boolean;
 }
 
 interface ShiftDetailResponse extends ShiftSummary {
@@ -47,14 +49,29 @@ export function ShiftDetailSheet({
   onAssign,
   onEdit,
   afterMutation,
+  openAssignIfUnderstaffed = false,
 }: ShiftDetailSheetProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
+  const hasAutoOpenedAssign = useRef(false);
 
   const { data: shift, isLoading } = useQuery({
     queryKey: queryKeys.shifts.detail(shiftId ?? ''),
     queryFn: () => fetchShiftDetail(shiftId!),
     enabled: open && !!shiftId,
   });
+
+  // Scenario 1: Auto-open assign modal when shift is understaffed (e.g. from callout notification).
+  useEffect(() => {
+    if (!open) hasAutoOpenedAssign.current = false;
+    if (!open || !shift || !onAssign || !openAssignIfUnderstaffed || hasAutoOpenedAssign.current) return;
+    const assigned = shift.assignments?.length ?? 0;
+    const needed = shift.headcountNeeded ?? 1;
+    const slotsOpen = Math.max(0, needed - assigned);
+    if (slotsOpen > 0) {
+      hasAutoOpenedAssign.current = true;
+      onAssign(shift);
+    }
+  }, [open, shift, onAssign, openAssignIfUnderstaffed]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -79,6 +96,37 @@ export function ShiftDetailSheet({
         )}
         {!isLoading && shift && (
           <div className="flex flex-1 flex-col gap-4 overflow-auto">
+            {/* Scenario 1: Callout / understaffed banner with countdown */}
+            {(() => {
+              const assigned = shift.assignments?.length ?? 0;
+              const needed = shift.headcountNeeded ?? 1;
+              const slotsOpen = Math.max(0, needed - assigned);
+              const startAt = shift.startAt ? new Date(shift.startAt) : null;
+              const now = new Date();
+              const msUntil = startAt ? startAt.getTime() - now.getTime();
+              const hoursUntil = msUntil > 0 ? msUntil / (60 * 60 * 1000) : 0;
+              const countdownLabel =
+                hoursUntil >= 24
+                  ? `${Math.floor(hoursUntil / 24)} days`
+                  : hoursUntil >= 1
+                    ? `${Math.floor(hoursUntil)} hour${Math.floor(hoursUntil) !== 1 ? 's' : ''}`
+                    : hoursUntil > 0
+                      ? `${Math.max(1, Math.ceil(hoursUntil * 60))} min`
+                      : null;
+              if (slotsOpen > 0 && countdownLabel) {
+                return (
+                  <div className="rounded-lg border border-amber-500/50 bg-amber-950/30 px-3 py-2 text-sm">
+                    <p className="font-medium text-amber-200">
+                      {slotsOpen} staff called out — {countdownLabel} until shift
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-200/80">
+                      Assign a replacement below.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant={shift.status === 'published' ? 'default' : 'secondary'}>
                 {shift.status}
@@ -90,7 +138,12 @@ export function ShiftDetailSheet({
               )}
               <PermissionGate require="shifts:update">
                 {onEdit && (
-                  <Button variant="outline" size="sm" className="h-7 gap-1" onClick={() => onEdit(shift)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="min-h-[44px] gap-1 sm:h-7 sm:min-h-0"
+                    onClick={() => onEdit(shift)}
+                  >
                     <PencilIcon className="size-3" />
                     Edit
                   </Button>
@@ -98,7 +151,11 @@ export function ShiftDetailSheet({
               </PermissionGate>
               <PermissionGate require="assignments:create">
                 {onAssign && (
-                  <Button size="sm" className="h-7 gap-1" onClick={() => onAssign(shift)}>
+                  <Button
+                    size="sm"
+                    className="min-h-[44px] gap-1 sm:h-7 sm:min-h-0"
+                    onClick={() => onAssign(shift)}
+                  >
                     <UserPlusIcon className="size-3" />
                     Assign
                   </Button>

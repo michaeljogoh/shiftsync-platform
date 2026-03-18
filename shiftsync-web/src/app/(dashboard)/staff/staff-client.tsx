@@ -69,14 +69,14 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-lg font-semibold text-slate-50">Staff</h1>
       </div>
 
       <PermissionGate require="users:view" fallback={<p className="text-sm text-slate-400">You don&apos;t have permission to view the staff list.</p>}>
         <div className="flex flex-wrap gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
           <select
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -86,7 +86,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             <option value="staff">Staff</option>
           </select>
           <select
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
           >
@@ -98,7 +98,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             ))}
           </select>
           <select
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={skillFilter}
             onChange={(e) => setSkillFilter(e.target.value)}
           >
@@ -110,7 +110,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             ))}
           </select>
           <select
-            className="h-9 rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200"
+            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
             value={activeFilter === 'all' ? 'all' : activeFilter ? 'active' : 'inactive'}
             onChange={(e) =>
               setActiveFilter(
@@ -138,8 +138,8 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           </>
         )}
         {!isLoading && !isError && (
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+            <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-slate-700 bg-slate-900/70">
                   <th className="px-3 py-2 text-left font-medium text-slate-300">Staff</th>

@@ -33,3 +33,11 @@ export interface DutyUpdatePayload {
   at: string;
 }
 
+/** Emitted when another manager assigned the same staff (409 double-book). */
+export interface AssignmentConflictPayload {
+  message: string;
+  shiftId?: string;
+  conflictingShift?: { id: string; startAt: string; endAt: string; title?: string };
+  competingAssignedBy?: string;
+}
+

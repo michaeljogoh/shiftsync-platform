@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusIcon } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
-import { weekToStartEnd } from '@/lib/schedule-utils';
+import { getWeekRange, weekToStartEnd } from '@/lib/schedule-utils';
 import { useUIStore } from '@/lib/stores/ui.store';
 import type { ShiftSummary } from '@/lib/api/server/shifts';
 import type { LocationSummary } from '@/lib/api/server/locations';
@@ -18,8 +18,10 @@ import { FullPageError } from '@/components/shared/FullPageError';
 import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { NotFound } from '@/components/shared/NotFound';
 import { ScheduleCalendarSkeleton, ScheduleListSkeleton } from '@/components/shared/ScheduleSkeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { ScheduleControls, type ViewMode } from './schedule-controls';
 import { WeeklyCalendarView } from './weekly-calendar-view';
+import { SingleDayCalendarView } from './single-day-calendar-view';
 import { ScheduleListView } from './schedule-list-view';
 import { ShiftDetailSheet } from './shift-detail-sheet';
 import { CreateShiftForm } from './create-shift-form';
@@ -73,14 +75,39 @@ export function ScheduleClient({
   const [assignShift, setAssignShift] = useState<ShiftSummary | null>(null);
   const [assignOpen, setAssignOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const searchParams = useSearchParams();
+  const [mobileDayIndex, setMobileDayIndex] = useState<number>(() => {
+    const { start: weekStart } = getWeekRange(week);
+    const today = new Date();
+    const diff = Math.floor((today.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.max(0, Math.min(6, diff));
+  });
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setActiveWeek(weekStringToMonday(week));
   }, [week, setActiveWeek]);
 
   useEffect(() => {
+    const { start: weekStart } = getWeekRange(week);
+    const today = new Date();
+    const diff = Math.floor((today.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000));
+    setMobileDayIndex((prev) => Math.max(0, Math.min(6, diff >= 0 && diff <= 6 ? diff : prev)));
+  }, [week]);
+
+  useEffect(() => {
     setActiveLocationFilter(locationId ? [locationId] : []);
   }, [locationId, setActiveLocationFilter]);
+
+  // Scenario 1: Deep link from notification (e.g. callout) — open shift detail and auto-open assign if understaffed.
+  useEffect(() => {
+    const linkShiftId = searchParams.get('shiftId');
+    const openAssign = searchParams.get('openAssign') === '1';
+    if (linkShiftId && openAssign) {
+      setDetailShiftId(linkShiftId);
+      setDetailOpen(true);
+    }
+  }, [searchParams]);
 
   const { data: shifts = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: queryKeys.shifts.byLocation(locationId, week),
@@ -191,6 +218,15 @@ export function ScheduleClient({
             + Add Shift
           </Button>
         </div>
+      ) : viewMode === 'calendar' && isMobile ? (
+        <SingleDayCalendarView
+          shifts={shifts}
+          week={week}
+          dayIndex={mobileDayIndex}
+          onDayChange={setMobileDayIndex}
+          locationTimezone={firstLocationTz}
+          onShiftClick={handleShiftClick}
+        />
       ) : viewMode === 'calendar' ? (
         <WeeklyCalendarView
           shifts={shifts}
@@ -229,6 +265,9 @@ export function ScheduleClient({
         }}
         afterMutation={() =>
           queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() })
+        }
+        openAssignIfUnderstaffed={
+          searchParams.get('openAssign') === '1' && searchParams.get('shiftId') === detailShiftId
         }
       />
       <AssignStaffModal
