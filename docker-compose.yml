@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: shiftsync
+      POSTGRES_PASSWORD: shiftsync
+      POSTGRES_DB: shiftsync
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./shiftsync-api
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      FRONTEND_URL: http://localhost:3000
+      DATABASE_URL: postgresql://shiftsync:shiftsync@db:5432/shiftsync
+      JWT_SECRET: "change-me-to-a-long-random-secret"
+      REFRESH_TOKEN_SECRET: "change-me-to-another-long-random-secret"
+      ENABLE_EMAIL_NOTIFICATIONS: "false"
+      POSTMARK_SERVER_TOKEN: ""
+      POSTMARK_FROM_EMAIL: noreply@shiftsync.app
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: ./shiftsync-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4000
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+        NEXTAUTH_URL: http://localhost:3000
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_SOCKET_URL: http://localhost:4000
+      NEXTAUTH_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+
+volumes:
+  pg_data:
+

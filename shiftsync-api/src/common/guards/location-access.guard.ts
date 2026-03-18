@@ -21,7 +21,7 @@ export class LocationAccessGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<{
       user?: SessionUser;
-      params?: { locationId?: string };
+      params?: { locationId?: string; id?: string };
       body?: { locationId?: string };
       query?: { locationId?: string };
     }>();
@@ -32,7 +32,7 @@ export class LocationAccessGuard implements CanActivate {
 
     const locationId =
       request.params?.locationId ??
-      // request.params?.id ??
+      request.params?.id ??
       request.body?.locationId ??
       request.query?.locationId;
     if (!locationId) return true;

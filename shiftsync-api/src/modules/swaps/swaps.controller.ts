@@ -53,17 +53,18 @@ export class SwapsController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'List swap requests (Admin/Manager)' })
   async findAll(
+    @CurrentUser() user: SessionUser,
     @Query('locationId') locationId?: string,
     @Query('status') status?: string,
   ) {
-    return this.swapsService.findAll({ locationId, status });
+    return this.swapsService.findAllForView(user, { locationId, status });
   }
 
   @Get(':id')
   @RequirePermission('swaps:view')
   @ApiOperation({ summary: 'Get swap request' })
-  async findOne(@Param('id') id: string) {
-    return this.swapsService.findById(id);
+  async findOne(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    return this.swapsService.findByIdForView(user, id);
   }
 
   @Patch(':id/accept')

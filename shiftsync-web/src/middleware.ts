@@ -10,7 +10,12 @@ const ROUTE_PERMISSIONS: Record<string, string> = {
   '/audit': 'audit:view',
   '/staff': 'users:view',
   '/analytics': 'analytics:view',
-  '/locations': 'locations:create',
+  '/locations': 'locations:view',
+  '/skills': 'skills:view',
+  '/schedule': 'shifts:view',
+  '/swaps': 'swaps:view',
+  '/on-duty': 'locations:view',
+  '/notifications': 'notifications:view',
 };
 
 function getSessionFromRequest(req: NextRequest): { features: string[] } | null {

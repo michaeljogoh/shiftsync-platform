@@ -77,6 +77,15 @@ export class ShiftsService {
       .leftJoinAndSelect('shift.location', 'location')
       .leftJoinAndSelect('shift.requiredSkill', 'skill');
 
+    if (actor.role === 'staff') {
+      // Staff can only view published shifts at locations they are certified for.
+      qb.andWhere('shift.status = :published', { published: 'published' });
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM user_location_certifications c WHERE c."userId" = :userId AND c."locationId" = shift."locationId" AND c."revokedAt" IS NULL)',
+        { userId: actor.id },
+      );
+    }
+
     if (filters.locationId) {
       qb.andWhere('shift.locationId = :locationId', {
         locationId: filters.locationId,
@@ -396,10 +405,18 @@ export class ShiftsService {
         shift.location?.ianaTimezone ?? 'UTC',
       ) as Shift;
     }
-    const isAssigned = (shift.assignments ?? []).some(
-      (a) => a.userId === actor.id,
+    // Staff can view published shifts at certified locations.
+    if (shift.status !== 'published') {
+      throw new ForbiddenException('No access to this shift');
+    }
+    const staff = await this.usersRepo.findOne({
+      where: { id: actor.id },
+      relations: ['locationCertifications'],
+    });
+    const certified = (staff?.locationCertifications ?? []).some(
+      (c) => c.locationId === shift.locationId && !c.revokedAt,
     );
-    if (!isAssigned) throw new ForbiddenException('No access to this shift');
+    if (!certified) throw new ForbiddenException('No access to this shift');
     return withLocalTimeDisplay(
       shift,
       shift.location?.ianaTimezone ?? 'UTC',

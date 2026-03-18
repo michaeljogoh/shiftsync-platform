@@ -84,18 +84,17 @@ export default function DashboardPage() {
   const { data: users = [], isLoading: usersLoading } = useQuery({
     queryKey: ["dashboard-overview", "users"],
     queryFn: async () => {
-      const { data } =
-        await apiClient.get<
-          {
-            id: string;
-            role: string;
-            isActive: boolean;
-            firstName: string;
-            lastName: string;
-            email: string;
-            createdAt?: string;
-          }[]
-        >("/users");
+      const { data } = await apiClient.get<
+        {
+          id: string;
+          role: string;
+          isActive: boolean;
+          firstName: string;
+          lastName: string;
+          email: string;
+          createdAt?: string;
+        }[]
+      >("/users");
       return data;
     },
     enabled: role === "admin" || role === "manager",
@@ -104,15 +103,14 @@ export default function DashboardPage() {
   const { data: locations = [], isLoading: locationsLoading } = useQuery({
     queryKey: ["dashboard-overview", "locations"],
     queryFn: async () => {
-      const { data } =
-        await apiClient.get<
-          {
-            id: string;
-            name: string;
-            isActive: boolean;
-            ianaTimezone: string;
-          }[]
-        >("/locations");
+      const { data } = await apiClient.get<
+        {
+          id: string;
+          name: string;
+          isActive: boolean;
+          ianaTimezone: string;
+        }[]
+      >("/locations");
       return data;
     },
     enabled: role === "admin" || role === "manager",
@@ -191,7 +189,7 @@ export default function DashboardPage() {
     enabled: !!userId && role === "staff",
   });
 
-  const { data: auditLogs = [], isLoading: auditLoading } = useQuery({
+  const { data: auditLogsRaw = [], isLoading: auditLoading } = useQuery({
     queryKey: ["dashboard-overview", "recent-activity"],
     queryFn: async () => {
       const { data } = await apiClient.get<
@@ -205,11 +203,14 @@ export default function DashboardPage() {
           actor?: { email: string; firstName?: string; lastName?: string };
           location?: { name: string };
         }[]
-      >("/audit/logs?limit=5&offset=0");
+      >("/audit/logs?limit=4&offset=0");
       return data;
     },
     enabled: role === "admin" || role === "manager",
   });
+  const auditLogs = [...auditLogsRaw].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  ).slice(0, 4);
 
   const activeStaff = users.filter(
     (u) => u.isActive && u.role === "staff",
@@ -507,38 +508,6 @@ export default function DashboardPage() {
 
           <div className="space-y-6 lg:col-span-2">
             <Card className="border-border bg-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-3">
-                <CardTitle className="text-base">Alerts</CardTitle>
-                {alerts.length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {alerts.length} active
-                  </Badge>
-                )}
-              </CardHeader>
-              <CardContent>
-                {alerts.length === 0 ? (
-                  <div className="flex flex-col items-center py-4 text-center">
-                    <CircleAlertIcon className="mb-2 size-8 text-green-500/60" />
-                    <p className="text-sm text-muted-foreground">
-                      All clear — no active alerts
-                    </p>
-                  </div>
-                ) : (
-                  <ul className="space-y-3">
-                    {alerts.map((a, i) => (
-                      <li key={i} className="flex items-center gap-3">
-                        <span
-                          className={`inline-flex size-2.5 shrink-0 rounded-full ${dotColor[a.color]}`}
-                        />
-                        <p className="text-sm text-foreground">{a.label}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
@@ -662,7 +631,7 @@ export default function DashboardPage() {
 
       {/* ── STAFF ── */}
       <RoleGate role={["staff"]}>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
           <StatCard
             title="Upcoming Shifts"
             value={upcomingShifts}
@@ -680,8 +649,8 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-3">
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
             <Card className="border-border bg-card">
               <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <CardTitle className="text-base">
@@ -732,7 +701,7 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-1">
             <Card className="border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
@@ -762,8 +731,8 @@ export default function DashboardPage() {
                   />
                   <QuickAction
                     icon={PackageOpenIcon}
-                    label="Drops"
-                    href="/swaps"
+                    label="Notifications"
+                    href="/notifications"
                     color="text-orange-600"
                     bg="bg-orange-500/10"
                   />
@@ -795,7 +764,7 @@ function RecentActivityTable({
 }) {
   return (
     <Card className="border-border bg-card">
-      <CardHeader className="flex flex-row items-center justify-between pb-3">
+      <CardHeader className="flex flex-row items-center justify-between py-2">
         <CardTitle className="text-base">Recent Activity</CardTitle>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/audit" className="text-xs text-primary">
@@ -804,75 +773,60 @@ function RecentActivityTable({
         </Button>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px] text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50 text-left">
-                <th className="px-4 py-2 font-medium text-muted-foreground">
-                  Timestamp
-                </th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">
-                  Actor
-                </th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">
-                  Action
-                </th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">
-                  Entity
-                </th>
-                <th className="px-4 py-2 font-medium text-muted-foreground">
-                  Location
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border">
-                    <td className="px-4 py-2.5" colSpan={5}>
-                      <Skeleton className="h-4 w-full" />
-                    </td>
-                  </tr>
-                ))
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-4 py-6 text-center text-muted-foreground"
-                  >
-                    No recent activity
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border bg-muted/50 text-left">
+              <th className="px-3 py-3 font-medium text-muted-foreground">
+                Timestamp
+              </th>
+              <th className="px-3 py-3 font-medium text-muted-foreground">
+                Actor
+              </th>
+              <th className="px-3 py-3 font-medium text-muted-foreground">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i} className="border-b border-border">
+                  <td className="px-3 py-3" colSpan={3}>
+                    <Skeleton className="h-3.5 w-full" />
                   </td>
                 </tr>
-              ) : (
-                logs.map((log) => (
-                  <tr
-                    key={log.id}
-                    className="border-b border-border last:border-0 hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-2.5 text-muted-foreground whitespace-nowrap">
-                      {log.createdAt
-                        ? new Date(log.createdAt).toLocaleString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-foreground">
-                      {log.actor?.email ?? log.actorId ?? "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-foreground">
-                      {log.action}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {log.entityType}
-                      {log.entityId ? ` ${log.entityId.slice(0, 8)}…` : ""}
-                    </td>
-                    <td className="px-4 py-2.5 text-muted-foreground">
-                      {log.location?.name ?? "—"}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : logs.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-3 py-4 text-center text-muted-foreground"
+                >
+                  No recent activity
+                </td>
+              </tr>
+            ) : (
+              logs.map((log) => (
+                <tr
+                  key={log.id}
+                  className="border-b border-border last:border-0 hover:bg-muted/30"
+                >
+                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {log.createdAt
+                      ? new Date(log.createdAt).toLocaleString()
+                      : "—"}
+                  </td>
+                  <td className="px-3 py-1 text-xs text-foreground truncate max-w-[140px]">
+                    {log.actor?.email ?? log.actorId ?? "—"}
+                  </td>
+                  <td className="px-3 py-1 text-xs text-foreground">
+                    {log.action}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </CardContent>
     </Card>
   );

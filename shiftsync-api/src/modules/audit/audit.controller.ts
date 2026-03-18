@@ -13,7 +13,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LocationAccessGuard } from '../../common/guards/location-access.guard';
-import { RequirePermission, Roles } from '../../common/decorators/auth.decorators';
+import { CurrentUser, RequirePermission, Roles } from '../../common/decorators/auth.decorators';
+import type { SessionUser } from '../auth/auth.types';
 
 @ApiTags('Audit')
 @ApiBearerAuth()
@@ -27,6 +28,7 @@ export class AuditController {
   @Roles('admin', 'manager')
   @ApiOperation({ summary: 'List audit logs' })
   async getLogs(
+    @CurrentUser() user: SessionUser,
     @Query('entityType') entityType?: string,
     @Query('entityId') entityId?: string,
     @Query('actorId') actorId?: string,
@@ -35,7 +37,7 @@ export class AuditController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    return this.auditService.findAll({
+    return this.auditService.findAllForUser(user, {
       entityType,
       entityId,
       actorId,

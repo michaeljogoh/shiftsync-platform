@@ -51,14 +51,15 @@ export class UsersController {
 
   @Get()
   @RequirePermission('users:view')
-  @Roles('admin')
-  @ApiOperation({ summary: 'List all users (Admin)' })
+  @Roles('admin', 'manager')
+  @ApiOperation({ summary: 'List users (Admin/Manager)' })
   async findAll(
+    @CurrentUser() user: SessionUser,
     @Query('role') role?: 'admin' | 'manager' | 'staff',
     @Query('locationId') locationId?: string,
     @Query('skillId') skillId?: string,
   ) {
-    return this.usersService.findAll({ role, locationId, skillId });
+    return this.usersService.findAllForView(user, { role, locationId, skillId });
   }
 
   @Post()
@@ -149,7 +150,14 @@ export class UsersController {
   @Get(':id/swaps')
   @RequirePermission('swaps:view')
   @ApiOperation({ summary: 'Get user swap requests' })
-  async getSwaps(@Param('id') id: string) {
+  async getSwaps(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    // Enforce self-service for staff; managers only for users they can view.
+    if (user.role === 'staff' && user.id !== id) {
+      throw new ForbiddenException('Can only view own swaps');
+    }
+    if (user.role === 'manager' && user.id !== id) {
+      await this.usersService.findByIdForView(user, id);
+    }
     return this.swapsService.findByUser(id);
   }
 
@@ -157,17 +165,30 @@ export class UsersController {
   @RequirePermission('assignments:view')
   @ApiOperation({ summary: 'Get user assignments' })
   async getAssignments(
+    @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
+    if (user.role === 'staff' && user.id !== id) {
+      throw new ForbiddenException('Can only view own assignments');
+    }
+    if (user.role === 'manager' && user.id !== id) {
+      await this.usersService.findByIdForView(user, id);
+    }
     return this.assignmentsService.findByUser(id, startDate, endDate);
   }
 
   @Get(':id/availability')
   @RequirePermission('availability:view')
   @ApiOperation({ summary: 'Get user availability' })
-  async getAvailability(@Param('id') id: string) {
+  async getAvailability(@CurrentUser() user: SessionUser, @Param('id') id: string) {
+    if (user.role === 'staff' && user.id !== id) {
+      throw new ForbiddenException('Can only view own availability');
+    }
+    if (user.role === 'manager' && user.id !== id) {
+      await this.usersService.findByIdForView(user, id);
+    }
     return this.availabilityService.getAvailability(id);
   }
 

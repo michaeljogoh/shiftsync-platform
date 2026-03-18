@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { startOfWeek, endOfWeek, addDays } from 'date-fns';
@@ -6,6 +6,7 @@ import { Shift } from '../shifts/entities/shift.entity';
 import { ShiftAssignment } from '../assignments/entities/shift-assignment.entity';
 import { User } from '../users/entities/user.entity';
 import { AssignmentsService } from '../assignments/assignments.service';
+import type { SessionUser } from '../auth/auth.types';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -33,9 +34,36 @@ export class AnalyticsService {
     return promise;
   }
 
+  private async getAllowedLocationIds(
+    user: SessionUser,
+  ): Promise<string[] | null> {
+    if (user.role === 'admin') return null;
+    if (user.role !== 'manager') return [];
+    const manager = await this.usersRepo.findOne({
+      where: { id: user.id },
+      relations: ['managedLocations'],
+    });
+    return (manager?.managedLocations ?? []).map((l) => l.id);
+  }
+
+  private async assertLocationAllowed(
+    user: SessionUser,
+    locationId?: string,
+  ): Promise<string[] | null> {
+    const allowed = await this.getAllowedLocationIds(user);
+    if (allowed === null) return null;
+    if (locationId && !allowed.includes(locationId)) {
+      throw new ForbiddenException(
+        'You do not have manager access to this location',
+      );
+    }
+    return allowed;
+  }
+
   async getOvertime(
     locationId?: string,
     weekStart?: string,
+    actor?: SessionUser,
   ): Promise<{ userId: string; name: string; projectedHours: number }[]> {
     const start = weekStart ? new Date(weekStart) : new Date();
     const weekStartDate = startOfWeek(start, { weekStartsOn: 0 });
@@ -47,6 +75,16 @@ export class AnalyticsService {
       .where('a.status NOT IN (:...statuses)', { statuses: ['cancelled'] })
       .andWhere('s.startAt >= :weekStart', { weekStart: weekStartDate })
       .andWhere('s.endAt <= :weekEnd', { weekEnd: weekEndDate });
+
+    if (actor) {
+      const allowed = await this.assertLocationAllowed(actor, locationId);
+      if (!locationId && allowed && allowed.length > 0) {
+        qb.andWhere('s.locationId IN (:...allowed)', { allowed });
+      }
+      if (!locationId && allowed && allowed.length === 0) {
+        return [];
+      }
+    }
 
     if (locationId) {
       qb.andWhere('s.locationId = :locationId', { locationId });
@@ -80,6 +118,7 @@ export class AnalyticsService {
     locationId: string | undefined,
     startDate: string,
     endDate: string,
+    actor?: SessionUser,
   ): Promise<{ userId: string; name: string; totalHours: number }[]> {
     const key = `hours:${locationId ?? 'all'}:${startDate}:${endDate}`;
     return this.getCached(key, async () => {
@@ -89,6 +128,16 @@ export class AnalyticsService {
         .where('a.status NOT IN (:...statuses)', { statuses: ['cancelled'] })
         .andWhere('s.startAt >= :start', { start: new Date(startDate) })
         .andWhere('s.endAt <= :end', { end: new Date(endDate) });
+
+      if (actor) {
+        const allowed = await this.assertLocationAllowed(actor, locationId);
+        if (!locationId && allowed && allowed.length > 0) {
+          qb.andWhere('s.locationId IN (:...allowed)', { allowed });
+        }
+        if (!locationId && allowed && allowed.length === 0) {
+          return [];
+        }
+      }
 
       if (locationId) {
         qb.andWhere('s.locationId = :locationId', { locationId });
@@ -217,7 +266,11 @@ export class AnalyticsService {
     });
   }
 
-  async whatIf(userId: string, shiftId: string): Promise<{
+  async whatIf(
+    userId: string,
+    shiftId: string,
+    actor?: SessionUser,
+  ): Promise<{
     projectedWeeklyHours: number;
     conflicts: { rule: string; message: string }[];
     warnings: string[];
@@ -228,6 +281,10 @@ export class AnalyticsService {
       relations: ['location', 'requiredSkill'],
     });
     if (!shift) throw new Error('Shift not found');
+
+    if (actor) {
+      await this.assertLocationAllowed(actor, shift.locationId);
+    }
 
     const weekStart = startOfWeek(shift.startAt, { weekStartsOn: 0 });
     const weekEnd = endOfWeek(shift.startAt, { weekStartsOn: 0 });
@@ -273,10 +330,21 @@ export class AnalyticsService {
     locationId?: string,
     startDate?: string,
     endDate?: string,
+    actor?: SessionUser,
   ): Promise<{ shiftId: string; title: string; needed: number; assigned: number }[]> {
     const qb = this.shiftsRepo
       .createQueryBuilder('s')
       .where('s.status = :status', { status: 'published' });
+
+    if (actor) {
+      const allowed = await this.assertLocationAllowed(actor, locationId);
+      if (!locationId && allowed && allowed.length > 0) {
+        qb.andWhere('s.locationId IN (:...allowed)', { allowed });
+      }
+      if (!locationId && allowed && allowed.length === 0) {
+        return [];
+      }
+    }
 
     if (locationId) qb.andWhere('s.locationId = :locationId', { locationId });
     if (startDate) qb.andWhere('s.startAt >= :start', { start: new Date(startDate) });

@@ -24,8 +24,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LocationAccessGuard } from '../../common/guards/location-access.guard';
-import { Roles, RequirePermission } from '../../common/decorators/auth.decorators';
+import { CurrentUser, Roles, RequirePermission } from '../../common/decorators/auth.decorators';
 import { Auditable } from '../../common/decorators/auditable.decorator';
+import type { SessionUser } from '../auth/auth.types';
 
 @ApiTags('Locations')
 @ApiBearerAuth()
@@ -37,8 +38,8 @@ export class LocationsController {
   @Get()
   @RequirePermission('locations:view')
   @ApiOperation({ summary: 'List all locations' })
-  async findAll() {
-    return this.locationsService.findAll();
+  async findAll(@CurrentUser() user: SessionUser) {
+    return this.locationsService.findAll(user);
   }
 
   @Post()
@@ -55,6 +56,7 @@ export class LocationsController {
 
   @Get(':id')
   @RequirePermission('locations:view')
+  @UseGuards(LocationAccessGuard)
   @ApiOperation({ summary: 'Get location by ID' })
   @ApiNotFoundResponse({ description: 'Location not found' })
   async findOne(@Param('id') id: string) {
@@ -102,6 +104,7 @@ export class LocationsController {
 
   @Get(':id/managers')
   @RequirePermission('locations:view')
+  @UseGuards(LocationAccessGuard)
   @ApiOperation({ summary: 'List managers assigned to location' })
   async getManagers(@Param('id') id: string) {
     return this.locationsService.getManagers(id);

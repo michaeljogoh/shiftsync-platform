@@ -48,7 +48,7 @@ export class ShiftsController {
 
   @Get()
   @RequirePermission('shifts:view')
-  @Roles('admin', 'manager')
+  @Roles('admin', 'manager', 'staff')
   @ApiOperation({ summary: 'List shifts with filters' })
   async findAll(
     @CurrentUser() user: SessionUser,
