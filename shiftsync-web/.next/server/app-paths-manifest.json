@@ -1,8 +1,1 @@
-{
-  "/(dashboard)/on-duty/page": "app/(dashboard)/on-duty/page.js",
-  "/(dashboard)/swaps/page": "app/(dashboard)/swaps/page.js",
-  "/(dashboard)/locations/page": "app/(dashboard)/locations/page.js",
-  "/(dashboard)/audit/page": "app/(dashboard)/audit/page.js",
-  "/(dashboard)/staff/page": "app/(dashboard)/staff/page.js",
-  "/(dashboard)/analytics/page": "app/(dashboard)/analytics/page.js"
-}
+{}

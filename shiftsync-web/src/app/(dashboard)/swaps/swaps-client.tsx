@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { CreateSwapRequestForm, type AssignmentOption } from './create-swap-request-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeftRightIcon, PackageOpenIcon, CheckIcon, XIcon, HandIcon } from 'lucide-react';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 
 function swapStatusBadge(status: string) {
   const map: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -78,6 +79,9 @@ export function SwapsClient({ locations }: SwapsClientProps) {
   const [acceptNote, setAcceptNote] = useState('');
   const [actioning, setActioning] = useState(false);
   const [createSwapOpen, setCreateSwapOpen] = useState(false);
+  const [managerPage, setManagerPage] = useState(1);
+  const [mySwapsPage, setMySwapsPage] = useState(1);
+  const [dropsPage, setDropsPage] = useState(1);
 
   const { data: managerSwaps = [], isLoading: managerLoading, isError: managerError, error: managerErr, refetch: refetchSwaps } = useQuery({
     queryKey: [...queryKeys.swaps.all(), { locationId: locationFilter, status: statusFilter }],
@@ -110,6 +114,18 @@ export function SwapsClient({ locations }: SwapsClientProps) {
     },
     enabled: view === 'drops' && !!userId,
   });
+
+  useEffect(() => {
+    setManagerPage(1);
+  }, [locationFilter, statusFilter]);
+
+  const MANAGER_PAGE_SIZE = 10;
+  const STAFF_PAGE_SIZE = 10;
+  const DROPS_PAGE_SIZE = 10;
+  const mySwapsAsInitiator = mySwaps.filter((s) => s.initiatorId === userId);
+  const { totalPages: managerTotalPages, paginate: paginateManager } = usePagination(managerSwaps, MANAGER_PAGE_SIZE);
+  const { totalPages: mySwapsTotalPages, paginate: paginateMySwaps } = usePagination(mySwapsAsInitiator, STAFF_PAGE_SIZE);
+  const { totalPages: dropsTotalPages, paginate: paginateDrops } = usePagination(availableDrops, DROPS_PAGE_SIZE);
 
   // Swaps where I am the target
   const incomingSwaps = mySwaps.filter((s) => s.targetUserId === userId && s.status === 'pending_target');
@@ -269,47 +285,50 @@ export function SwapsClient({ locations }: SwapsClientProps) {
           )}
           {managerError && (swapStatusCode === 403 ? <PermissionDenied /> : <FullPageError message="Failed to load swap requests." onRetry={() => refetchSwaps()} />)}
           {!managerLoading && !managerError && (
-            <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
-              <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Type</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Initiator</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Target</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Shift</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Submitted</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Status</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {managerSwaps.map((swap) => (
-                    <tr key={swap.id} className="border-b border-border">
-                      <td className="px-3 py-2"><Badge variant="outline">{swap.type}</Badge></td>
-                      <td className="px-3 py-2 text-foreground">{swap.initiator ? `${swap.initiator.firstName} ${swap.initiator.lastName}` : swap.initiatorId}</td>
-                      <td className="px-3 py-2 text-foreground">{swap.targetUser ? `${swap.targetUser.firstName} ${swap.targetUser.lastName}` : '—'}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{swap.initiatorAssignment?.shift ? formatShiftLabel(swap.initiatorAssignment.shift) : '—'}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{formatDate(swap.createdAt)}</td>
-                      <td className="px-3 py-2">{swapStatusBadge(swap.status)}</td>
-                      <td className="px-3 py-2">
-                        {swap.status === 'pending_manager' && (
-                          <div className="flex gap-1.5">
-                            <Button size="sm" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => handleApprove(swap)} disabled={actioning}>Approve</Button>
-                            <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => setDenyModal(swap)} disabled={actioning}>Deny</Button>
-                          </div>
-                        )}
-                      </td>
+            <>
+              <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[600px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted">
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Type</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Initiator</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Target</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Shift</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Submitted</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Status</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {managerSwaps.length === 0 && (
-                <div className="py-12 text-center">
-                  <ArrowLeftRightIcon className="mx-auto mb-2 size-8 text-muted-foreground/50" />
-                  <p className="text-sm text-muted-foreground">No requests match your filters.</p>
-                </div>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginateManager(managerPage).map((swap) => (
+                      <tr key={swap.id} className="border-b border-border">
+                        <td className="px-3 py-2"><Badge variant="outline">{swap.type}</Badge></td>
+                        <td className="px-3 py-2 text-foreground">{swap.initiator ? `${swap.initiator.firstName} ${swap.initiator.lastName}` : swap.initiatorId}</td>
+                        <td className="px-3 py-2 text-foreground">{swap.targetUser ? `${swap.targetUser.firstName} ${swap.targetUser.lastName}` : '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{swap.initiatorAssignment?.shift ? formatShiftLabel(swap.initiatorAssignment.shift) : '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{formatDate(swap.createdAt)}</td>
+                        <td className="px-3 py-2">{swapStatusBadge(swap.status)}</td>
+                        <td className="px-3 py-2">
+                          {swap.status === 'pending_manager' && (
+                            <div className="flex gap-1.5">
+                              <Button size="sm" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => handleApprove(swap)} disabled={actioning}>Approve</Button>
+                              <Button size="sm" variant="outline" className="min-h-[44px] min-w-[44px] sm:h-7 sm:min-h-0 sm:min-w-0" onClick={() => setDenyModal(swap)} disabled={actioning}>Deny</Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {managerSwaps.length === 0 && (
+                  <div className="py-12 text-center">
+                    <ArrowLeftRightIcon className="mx-auto mb-2 size-8 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">No requests match your filters.</p>
+                  </div>
+                )}
+              </div>
+              <PaginationControls currentPage={managerPage} totalPages={managerTotalPages} onPageChange={setManagerPage} />
+            </>
           )}
         </PermissionGate>
       )}
@@ -353,48 +372,51 @@ export function SwapsClient({ locations }: SwapsClientProps) {
           <p className="text-sm text-muted-foreground">Your original assignment stays unchanged until manager approval. You can cancel before approval.</p>
           {mySwapsLoading ? (
             <Skeleton className="h-24 w-full rounded-lg" />
-          ) : mySwaps.filter((s) => s.initiatorId === userId).length === 0 ? (
+          ) : mySwapsAsInitiator.length === 0 ? (
             <div className="rounded-lg border border-border bg-card px-4 py-8 text-center">
               <ArrowLeftRightIcon className="mx-auto mb-2 size-8 text-muted-foreground/50" />
               <p className="text-sm font-medium text-foreground">No active requests</p>
               <p className="mt-1 text-xs text-muted-foreground">Create a swap or drop request using the button above.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted">
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Type</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">My shift</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">With / To</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Status</th>
-                    <th className="px-3 py-2 text-left font-medium text-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {mySwaps.filter((s) => s.initiatorId === userId).map((swap) => (
-                    <tr key={swap.id} className="border-b border-border">
-                      <td className="px-3 py-2"><Badge variant="outline">{swap.type}</Badge></td>
-                      <td className="px-3 py-2 text-foreground">{swap.initiatorAssignment?.shift ? formatShiftLabel(swap.initiatorAssignment.shift) : '—'}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
-                        {swap.targetUser ? `${swap.targetUser.firstName} ${swap.targetUser.lastName}` : swap.type === 'drop' ? 'Open drop' : '—'}
-                      </td>
-                      <td className="px-3 py-2">{swapStatusBadge(swap.status)}</td>
-                      <td className="px-3 py-2">
-                        {canCancelStatuses.includes(swap.status) && (
-                          <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0" onClick={() => handleCancelRequest(swap)} disabled={actioning}>
-                            Cancel
-                          </Button>
-                        )}
-                        {!canCancelStatuses.includes(swap.status) && (
-                          <span className="text-xs text-muted-foreground capitalize">{swap.status.replace('_', ' ')}</span>
-                        )}
-                      </td>
+            <>
+              <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted">
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Type</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">My shift</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">With / To</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Status</th>
+                      <th className="px-3 py-2 text-left font-medium text-foreground">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {paginateMySwaps(mySwapsPage).map((swap) => (
+                      <tr key={swap.id} className="border-b border-border">
+                        <td className="px-3 py-2"><Badge variant="outline">{swap.type}</Badge></td>
+                        <td className="px-3 py-2 text-foreground">{swap.initiatorAssignment?.shift ? formatShiftLabel(swap.initiatorAssignment.shift) : '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {swap.targetUser ? `${swap.targetUser.firstName} ${swap.targetUser.lastName}` : swap.type === 'drop' ? 'Open drop' : '—'}
+                        </td>
+                        <td className="px-3 py-2">{swapStatusBadge(swap.status)}</td>
+                        <td className="px-3 py-2">
+                          {canCancelStatuses.includes(swap.status) && (
+                            <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-0" onClick={() => handleCancelRequest(swap)} disabled={actioning}>
+                              Cancel
+                            </Button>
+                          )}
+                          {!canCancelStatuses.includes(swap.status) && (
+                            <span className="text-xs text-muted-foreground capitalize">{swap.status.replace('_', ' ')}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationControls currentPage={mySwapsPage} totalPages={mySwapsTotalPages} onPageChange={setMySwapsPage} />
+            </>
           )}
         </div>
       )}
@@ -412,8 +434,9 @@ export function SwapsClient({ locations }: SwapsClientProps) {
               <p className="mt-1 text-xs text-muted-foreground">When colleagues drop shifts you&apos;re qualified for, they&apos;ll appear here.</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {availableDrops.map((drop) => {
+            <>
+              <div className="space-y-2">
+                {paginateDrops(dropsPage).map((drop) => {
                 const shift = drop.initiatorAssignment?.shift;
                 return (
                   <div key={drop.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
@@ -435,7 +458,9 @@ export function SwapsClient({ locations }: SwapsClientProps) {
                   </div>
                 );
               })}
-            </div>
+              </div>
+              <PaginationControls currentPage={dropsPage} totalPages={dropsTotalPages} onPageChange={setDropsPage} />
+            </>
           )}
         </div>
       )}

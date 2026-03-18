@@ -28,7 +28,7 @@ import {
 } from "lucide-react"
 
 const navMainItems = [
-  // { title: "Dashboard", url: "/", icon: <GalleryVerticalEndIcon className="size-4" />, items: [{ title: "Overview", url: "/" }] },
+  { title: "Dashboard", url: "/dashboard", icon: <GalleryVerticalEndIcon className="size-4" />, items: [{ title: "Overview", url: "/" }] },
   { title: "Schedule", url: "/schedule", icon: <CalendarIcon className="size-4" />, items: [{ title: "View", url: "/schedule" }] },
   { title: "Staff", url: "/staff", icon: <UsersIcon className="size-4" />, items: [{ title: "View", url: "/staff" }] },
   { title: "Swap & Drop", url: "/swaps", icon: <ArrowLeftRightIcon className="size-4" />, items: [{ title: "View", url: "/swaps" }] },

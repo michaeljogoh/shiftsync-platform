@@ -23,6 +23,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { apiClient } from '@/lib/api/client/client';
 import { RoleGate } from '@/components/shared/RoleGate';
 import { FullPageError } from '@/components/shared/FullPageError';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 import {
   MapPinIcon,
   PencilIcon,
@@ -93,6 +94,10 @@ export function LocationsClient() {
   const [addManagerOpen, setAddManagerOpen] = useState(false);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [actioning, setActioning] = useState(false);
+  const [locPage, setLocPage] = useState(1);
+  const [staffSheetPage, setStaffSheetPage] = useState(1);
+
+  const LOC_PAGE_SIZE = 9;
 
   const { data: locations = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['locations'],
@@ -102,6 +107,9 @@ export function LocationsClient() {
     },
   });
 
+  const { totalPages: locTotalPages, paginate: paginateLocs } = usePagination(locations, LOC_PAGE_SIZE);
+  const pagedLocations = paginateLocs(locPage);
+
   const { data: locationStaff = [], isLoading: staffLoading } = useQuery({
     queryKey: ['location-staff', detailLocation?.id],
     queryFn: async () => {
@@ -110,6 +118,10 @@ export function LocationsClient() {
     },
     enabled: !!detailLocation,
   });
+
+  const filteredStaff = locationStaff.filter((s) => s.role === 'staff');
+  const { totalPages: sheetStaffPages, paginate: paginateSheetStaff } = usePagination(filteredStaff, 5);
+  const pagedSheetStaff = paginateSheetStaff(staffSheetPage);
 
   const { data: locationManagers = [], isLoading: managersLoading } = useQuery({
     queryKey: ['location-managers', detailLocation?.id],
@@ -251,11 +263,11 @@ export function LocationsClient() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {locations.map((loc) => (
+        {pagedLocations.map((loc) => (
           <Card
             key={loc.id}
             className="border-border bg-card cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setDetailLocation(loc)}
+            onClick={() => { setDetailLocation(loc); setStaffSheetPage(1); }}
           >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-2">
@@ -290,6 +302,7 @@ export function LocationsClient() {
           </Card>
         ))}
       </div>
+      <PaginationControls currentPage={locPage} totalPages={locTotalPages} onPageChange={setLocPage} />
 
       {/* Detail Sheet */}
       <Sheet open={!!detailLocation} onOpenChange={(open) => !open && setDetailLocation(null)}>
@@ -353,10 +366,9 @@ export function LocationsClient() {
                 {staffLoading ? (
                   <div className="space-y-1">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full" />)}</div>
                 ) : (
-                  <ul className="space-y-1">
-                    {locationStaff
-                      .filter((s) => s.role === 'staff')
-                      .map((s) => (
+                  <>
+                    <ul className="space-y-1">
+                      {pagedSheetStaff.map((s) => (
                         <li key={s.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-1.5">
                           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-medium text-foreground">
                             {s.firstName[0]}{s.lastName[0]}
@@ -367,10 +379,12 @@ export function LocationsClient() {
                           </div>
                         </li>
                       ))}
-                    {locationStaff.filter((s) => s.role === 'staff').length === 0 && (
-                      <li className="text-sm text-muted-foreground py-2">No certified staff</li>
-                    )}
-                  </ul>
+                      {filteredStaff.length === 0 && (
+                        <li className="text-sm text-muted-foreground py-2">No certified staff</li>
+                      )}
+                    </ul>
+                    <PaginationControls currentPage={staffSheetPage} totalPages={sheetStaffPages} onPageChange={setStaffSheetPage} />
+                  </>
                 )}
               </div>
             </div>

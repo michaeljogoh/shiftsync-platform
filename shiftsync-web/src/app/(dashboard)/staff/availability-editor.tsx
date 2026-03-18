@@ -96,19 +96,6 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
 
   const displayGrid = grid ?? initialGrid ?? Array.from({ length: 7 }, () => Array.from({ length: SLOTS_PER_DAY }, () => false));
 
-  const handleCellClick = useCallback(
-    (day: number, slot: number) => {
-      setGrid((prev) => {
-        const next = prev ?? initialGrid ?? displayGrid;
-        const nextGrid = next.map((row, d) =>
-          d === day ? row.map((v, s) => (s === slot ? !v : v)) : [...row],
-        );
-        return nextGrid;
-      });
-    },
-    [initialGrid, displayGrid],
-  );
-
   const handleCellDown = useCallback(
     (day: number, slot: number) => {
       const current = grid ?? initialGrid ?? displayGrid;
@@ -210,13 +197,12 @@ export function AvailabilityEditor({ userId }: AvailabilityEditorProps) {
                     <button
                       type="button"
                       className={cn(
-                        'block h-3 w-full min-w-[20px] rounded-sm transition last:border-r-0',
+                        'block h-4 w-full min-w-[20px] rounded-sm transition-colors select-none last:border-r-0',
                         displayGrid[day][slot]
                           ? 'bg-primary/80 hover:bg-primary'
-                          : 'bg-muted hover:bg-muted',
+                          : 'bg-muted hover:bg-muted-foreground/20',
                       )}
-                      onClick={() => handleCellClick(day, slot)}
-                      onMouseDown={() => handleCellDown(day, slot)}
+                      onMouseDown={(e) => { e.preventDefault(); handleCellDown(day, slot); }}
                       onMouseEnter={() => handleCellEnter(day, slot)}
                     />
                   </td>

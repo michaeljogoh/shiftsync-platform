@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { apiClient } from '@/lib/api/client/client';
 import { RoleGate } from '@/components/shared/RoleGate';
 import { FullPageError } from '@/components/shared/FullPageError';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 import { PencilIcon, PlusIcon, Trash2Icon, WrenchIcon } from 'lucide-react';
 
 interface Skill {
@@ -38,6 +39,9 @@ export function SkillsClient() {
   const [editSkill, setEditSkill] = useState<Skill | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Skill | null>(null);
   const [actioning, setActioning] = useState(false);
+  const [skillsPage, setSkillsPage] = useState(1);
+
+  const SKILLS_PAGE_SIZE = 12;
 
   const { data: skills = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['skills'],
@@ -46,6 +50,9 @@ export function SkillsClient() {
       return data;
     },
   });
+
+  const { totalPages: skillsTotalPages, paginate: paginateSkills } = usePagination(skills, SKILLS_PAGE_SIZE);
+  const pagedSkills = paginateSkills(skillsPage);
 
   const { register, handleSubmit, reset, formState: { isSubmitting } } = useForm<SkillForm>();
   const { register: regEdit, handleSubmit: handleEditSubmit, reset: resetEdit, formState: { isSubmitting: editSubmitting } } = useForm<SkillForm>();
@@ -123,7 +130,7 @@ export function SkillsClient() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {skills.map((skill) => (
+        {pagedSkills.map((skill) => (
           <div key={skill.id} className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3">
             <div>
               <Badge variant="secondary" className="mb-1">{skill.name}</Badge>
@@ -147,6 +154,7 @@ export function SkillsClient() {
           <div className="col-span-full py-12 text-center text-sm text-muted-foreground">No skills defined yet.</div>
         )}
       </div>
+      <PaginationControls currentPage={skillsPage} totalPages={skillsTotalPages} onPageChange={setSkillsPage} />
 
       {/* Create */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

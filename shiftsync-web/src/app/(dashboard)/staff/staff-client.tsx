@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -26,6 +26,7 @@ import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { StaffTableSkeleton } from '@/components/shared/StaffTableSkeleton';
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { RoleGate } from '@/components/shared/RoleGate';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 import { StaffDetailSheet } from './staff-detail-sheet';
 import { PlusIcon } from 'lucide-react';
 
@@ -64,6 +65,8 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [staffPage, setStaffPage] = useState(1);
+  const STAFF_PAGE_SIZE = 10;
 
   const { register: regCreate, handleSubmit: handleCreate, reset: resetCreate, formState: { isSubmitting: createSubmitting, errors: createErrors } } = useForm<CreateUserForm>({
     defaultValues: { role: 'staff' },
@@ -101,6 +104,62 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
     if (activeFilter === 'all') return users;
     return users.filter((u) => u.isActive === activeFilter);
   }, [users, activeFilter]);
+
+  const { totalPages: staffTotalPages, paginate: paginateStaff } = usePagination(filtered, STAFF_PAGE_SIZE);
+  const pagedStaff = paginateStaff(staffPage);
+
+  const safeSetStaffPage = (p: number) => {
+    const maxPage = Math.max(1, Math.ceil(filtered.length / STAFF_PAGE_SIZE));
+    setStaffPage(Math.min(p, maxPage));
+  };
+
+  const weekRange = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    return {
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+    };
+  }, []);
+
+  const pagedUserIds = useMemo(() => pagedStaff.map((u) => u.id), [pagedStaff]);
+
+  const [weeklyHours, setWeeklyHours] = useState<Record<string, number>>({});
+
+  const { data: hoursMap } = useQuery({
+    queryKey: ['staff-weekly-hours', pagedUserIds, weekRange.startDate],
+    queryFn: async () => {
+      const results: Record<string, number> = {};
+      await Promise.all(
+        pagedUserIds.map(async (uid) => {
+          try {
+            const { data: assignments } = await apiClient.get<
+              { shift?: { startAt: string; endAt: string } }[]
+            >(`/users/${uid}/assignments?startDate=${weekRange.startDate}&endDate=${weekRange.endDate}`);
+            let totalMs = 0;
+            for (const a of assignments) {
+              if (!a.shift) continue;
+              totalMs += new Date(a.shift.endAt).getTime() - new Date(a.shift.startAt).getTime();
+            }
+            results[uid] = Math.round((totalMs / 3_600_000) * 10) / 10;
+          } catch {
+            results[uid] = 0;
+          }
+        }),
+      );
+      return results;
+    },
+    enabled: pagedUserIds.length > 0,
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (hoursMap) setWeeklyHours((prev) => ({ ...prev, ...hoursMap }));
+  }, [hoursMap]);
 
   const openDetail = (user: UserSummary) => {
     setSelectedUser(user);
@@ -168,7 +227,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           <select
             className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => { setRoleFilter(e.target.value); setStaffPage(1); }}
           >
             <option value="">All roles</option>
             <option value="admin">Admin</option>
@@ -178,7 +237,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           <select
             className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={locationFilter}
-            onChange={(e) => setLocationFilter(e.target.value)}
+            onChange={(e) => { setLocationFilter(e.target.value); setStaffPage(1); }}
           >
             <option value="">All locations</option>
             {locations.map((loc) => (
@@ -190,7 +249,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           <select
             className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={skillFilter}
-            onChange={(e) => setSkillFilter(e.target.value)}
+            onChange={(e) => { setSkillFilter(e.target.value); setStaffPage(1); }}
           >
             <option value="">All skills</option>
             {skills.map((s) => (
@@ -202,11 +261,12 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           <select
             className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={activeFilter === 'all' ? 'all' : activeFilter ? 'active' : 'inactive'}
-            onChange={(e) =>
+            onChange={(e) => {
               setActiveFilter(
                 e.target.value === 'all' ? 'all' : e.target.value === 'active',
-              )
-            }
+              );
+              setStaffPage(1);
+            }}
           >
             <option value="all">All status</option>
             <option value="active">Active</option>
@@ -228,6 +288,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           </>
         )}
         {!isLoading && !isError && (
+          <>
           <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
@@ -236,12 +297,12 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Role</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Skills</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Certified locations</th>
-                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hours this week</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hours</th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((user) => (
+                {pagedStaff.map((user) => (
                   <tr
                     key={user.id}
                     className="cursor-pointer border-b border-border transition hover:bg-muted"
@@ -293,7 +354,13 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground">—</td>
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {weeklyHours[user.id] != null ? (
+                        <span className={weeklyHours[user.id] >= 40 ? 'font-medium text-destructive' : weeklyHours[user.id] >= 35 ? 'font-medium text-amber-600' : ''}>
+                          {weeklyHours[user.id]}h
+                        </span>
+                      ) : '—'}
+                    </td>
                     <td className="px-3 py-2">
                       <Badge variant={user.isActive ? 'default' : 'secondary'}>
                         {user.isActive ? 'Active' : 'Inactive'}
@@ -310,6 +377,8 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
               </div>
             )}
           </div>
+          <PaginationControls currentPage={staffPage} totalPages={staffTotalPages} onPageChange={safeSetStaffPage} />
+          </>
         )}
       </PermissionGate>
 

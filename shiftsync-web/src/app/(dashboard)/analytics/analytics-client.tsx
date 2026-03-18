@@ -26,6 +26,7 @@ import { queryKeys } from '@/lib/query-keys';
 import { FullPageError } from '@/components/shared/FullPageError';
 import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { AnalyticsSkeleton } from '@/components/shared/AnalyticsSkeleton';
+import { PaginationControls, usePagination } from '@/components/shared/PaginationControls';
 import type { LocationSummary } from '@/lib/api/server/locations';
 import { AlertTriangleIcon, TrendingUpIcon, StarIcon } from 'lucide-react';
 
@@ -55,6 +56,9 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
   const [fairnessLocationId, setFairnessLocationId] = useState<string>('');
   const [fairnessPeriod, setFairnessPeriod] = useState(() => getDateRange(28));
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const [understaffedPage, setUnderstaffedPage] = useState(1);
+  const [overtimePage, setOvertimePage] = useState(1);
+  const [fairnessPage, setFairnessPage] = useState(1);
 
   const { data: overtime = [], isLoading: overtimeLoading, isError: overtimeError, error: overtimeErr, refetch: refetchOvertime } = useQuery({
     queryKey: queryKeys.analytics.overtime(locationId || undefined, weekStart),
@@ -122,6 +126,12 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
     [overtime],
   );
 
+  const understaffedTyped = understaffed as { shiftId: string; title: string; needed: number; assigned: number }[];
+  const understaffedPagination = usePagination(understaffedTyped, 5);
+  const overtimePagination = usePagination(overtimeWithCost, 10);
+  const fairnessStaff = fairness?.staff ?? [];
+  const fairnessPagination = usePagination(fairnessStaff as { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; deviationFromAverage?: number; flagged?: boolean }[], 10);
+
   if (overtimeLoading) {
     return (
       <div className="space-y-6">
@@ -146,7 +156,11 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
         <select
           className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
           value={locationId}
-          onChange={(e) => setLocationId(e.target.value)}
+          onChange={(e) => {
+            setLocationId(e.target.value);
+            setUnderstaffedPage(1);
+            setOvertimePage(1);
+          }}
         >
           <option value="">All locations</option>
           {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
@@ -168,14 +182,21 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
           ) : understaffed.length === 0 ? (
             <p className="text-sm text-muted-foreground">All shifts fully staffed.</p>
           ) : (
-            <div className="space-y-2">
-              {(understaffed as { shiftId: string; title: string; needed: number; assigned: number }[]).map((s) => (
-                <div key={s.shiftId} className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/30">
-                  <span className="text-sm font-medium text-foreground">{s.title}</span>
-                  <Badge variant="outline" className="text-amber-600 border-amber-400">{s.assigned}/{s.needed} filled</Badge>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="space-y-2">
+                {understaffedPagination.paginate(understaffedPage).map((s) => (
+                  <div key={s.shiftId} className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900 dark:bg-amber-950/30">
+                    <span className="text-sm font-medium text-foreground">{s.title}</span>
+                    <Badge variant="outline" className="text-amber-600 border-amber-400">{s.assigned}/{s.needed} filled</Badge>
+                  </div>
+                ))}
+              </div>
+              <PaginationControls
+                currentPage={understaffedPage}
+                totalPages={understaffedPagination.totalPages}
+                onPageChange={setUnderstaffedPage}
+              />
+            </>
           )}
         </CardContent>
       </Card>
@@ -192,7 +213,10 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
             type="date"
             className="mt-2 rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
             value={weekStart}
-            onChange={(e) => setWeekStart(getWeekStart(new Date(e.target.value)))}
+            onChange={(e) => {
+              setWeekStart(getWeekStart(new Date(e.target.value)));
+              setOvertimePage(1);
+            }}
           />
         </CardHeader>
         <CardContent>
@@ -238,7 +262,7 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {overtimeWithCost.map((row: { userId: string; name: string; projectedHours: number; overtimeHours: number; cost: number }) => (
+                    {overtimePagination.paginate(overtimePage).map((row: { userId: string; name: string; projectedHours: number; overtimeHours: number; cost: number }) => (
                       <tr key={row.userId} className={`border-b border-border ${row.projectedHours >= 40 ? 'bg-destructive/10' : row.projectedHours >= 35 ? 'bg-amber-50 dark:bg-amber-950/20' : ''}`}>
                         <td className="py-1.5 text-foreground">{row.name}</td>
                         <td className="py-1.5">{row.projectedHours}h</td>
@@ -249,6 +273,11 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                currentPage={overtimePage}
+                totalPages={overtimePagination.totalPages}
+                onPageChange={setOvertimePage}
+              />
             </div>
           )}
         </CardContent>
@@ -310,7 +339,7 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
           </CardTitle>
           <CardDescription>Premium shift distribution equity across staff</CardDescription>
           <div className="mt-2 flex flex-wrap gap-2">
-            <select className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground" value={fairnessLocationId} onChange={(e) => setFairnessLocationId(e.target.value)}>
+            <select className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground" value={fairnessLocationId} onChange={(e) => { setFairnessLocationId(e.target.value); setFairnessPage(1); }}>
               <option value="">First location</option>
               {locations.map((loc) => <option key={loc.id} value={loc.id}>{loc.name}</option>)}
             </select>
@@ -324,8 +353,8 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
                 <option key={s.userId} value={s.userId}>{s.name}</option>
               ))}
             </select>
-            <input type="date" className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={fairnessPeriod.startDate} onChange={(e) => setFairnessPeriod((p) => ({ ...p, startDate: e.target.value }))} />
-            <input type="date" className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={fairnessPeriod.endDate} onChange={(e) => setFairnessPeriod((p) => ({ ...p, endDate: e.target.value }))} />
+            <input type="date" className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={fairnessPeriod.startDate} onChange={(e) => { setFairnessPeriod((p) => ({ ...p, startDate: e.target.value })); setFairnessPage(1); }} />
+            <input type="date" className="rounded border border-input bg-background px-2 py-1 text-sm text-foreground" value={fairnessPeriod.endDate} onChange={(e) => { setFairnessPeriod((p) => ({ ...p, endDate: e.target.value })); setFairnessPage(1); }} />
           </div>
         </CardHeader>
         <CardContent>
@@ -389,7 +418,7 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {(fairness.staff ?? []).map((s: { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; deviationFromAverage?: number; flagged?: boolean }) => (
+                    {fairnessPagination.paginate(fairnessPage).map((s: { userId: string; name: string; totalShiftsAssigned: number; premiumShiftsAssigned: number; premiumRatio: number; deviationFromAverage?: number; flagged?: boolean }) => (
                       <tr key={s.userId} className={`border-b border-border ${s.userId === selectedStaffId ? 'bg-muted' : ''}`}>
                         <td className="py-1.5 text-foreground">{s.name}</td>
                         <td className="py-1.5">{s.totalShiftsAssigned}</td>
@@ -404,6 +433,11 @@ export function AnalyticsClient({ locations }: AnalyticsClientProps) {
                   </tbody>
                 </table>
               </div>
+              <PaginationControls
+                currentPage={fairnessPage}
+                totalPages={fairnessPagination.totalPages}
+                onPageChange={setFairnessPage}
+              />
             </div>
           )}
         </CardContent>
