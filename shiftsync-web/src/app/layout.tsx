@@ -18,7 +18,7 @@ export const viewport = { width: 'device-width', initialScale: 1 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={cn('font-sans', fontSans.variable)}>
-      <body className="min-h-screen bg-slate-950 text-slate-50">
+      <body className="min-h-screen bg-background text-foreground">
       <TooltipProvider>
         <ReactQueryProvider>{children}</ReactQueryProvider>
         <Toaster />

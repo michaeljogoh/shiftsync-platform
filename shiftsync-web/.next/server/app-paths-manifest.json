@@ -1,8 +1,8 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/(dashboard)/staff/page": "app/(dashboard)/staff/page.js",
+  "/(dashboard)/on-duty/page": "app/(dashboard)/on-duty/page.js",
   "/(dashboard)/swaps/page": "app/(dashboard)/swaps/page.js",
+  "/(dashboard)/locations/page": "app/(dashboard)/locations/page.js",
+  "/(dashboard)/audit/page": "app/(dashboard)/audit/page.js",
+  "/(dashboard)/staff/page": "app/(dashboard)/staff/page.js",
   "/(dashboard)/analytics/page": "app/(dashboard)/analytics/page.js"
 }

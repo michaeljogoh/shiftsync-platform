@@ -212,12 +212,12 @@ export function AssignStaffModal({
           <DialogTitle>Assign staff</DialogTitle>
         </DialogHeader>
         {!shift ? (
-          <p className="text-sm text-slate-500">No shift selected.</p>
+          <p className="text-sm text-muted-foreground">No shift selected.</p>
         ) : isLoading ? (
           <Skeleton className="h-48 w-full" />
         ) : (
           <>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               Available qualified staff (sorted by availability for this shift). Availability is shown in the shift&apos;s location timezone ({tzAbbrev}).
             </p>
             <ul className="max-h-80 space-y-1 overflow-auto">
@@ -231,13 +231,13 @@ export function AssignStaffModal({
                 return (
                   <li
                     key={user.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-800/50 p-2"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border bg-muted p-2"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-100">{name}</p>
-                      <p className="text-xs text-slate-400">Skills: {skillNames}</p>
+                      <p className="font-medium text-foreground">{name}</p>
+                      <p className="text-xs text-muted-foreground">Skills: {skillNames}</p>
                       {availabilityLabel != null && (
-                        <p className="mt-0.5 text-xs text-slate-500">
+                        <p className="mt-0.5 text-xs text-muted-foreground">
                           Availability: {availabilityLabel}
                         </p>
                       )}

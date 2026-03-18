@@ -1,9 +1,21 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { apiClient } from '@/lib/api/client/client';
 import { queryKeys } from '@/lib/query-keys';
 import type { UserSummary } from '@/lib/api/server/users';
@@ -13,7 +25,17 @@ import { FullPageError } from '@/components/shared/FullPageError';
 import { PermissionDenied } from '@/components/shared/PermissionDenied';
 import { StaffTableSkeleton } from '@/components/shared/StaffTableSkeleton';
 import { PermissionGate } from '@/components/shared/PermissionGate';
+import { RoleGate } from '@/components/shared/RoleGate';
 import { StaffDetailSheet } from './staff-detail-sheet';
+import { PlusIcon } from 'lucide-react';
+
+interface CreateUserForm {
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'manager' | 'staff';
+  password: string;
+}
 
 async function fetchUsersClient(filters: {
   role?: string;
@@ -34,12 +56,30 @@ interface StaffClientProps {
 }
 
 export function StaffClient({ locations, skills }: StaffClientProps) {
+  const queryClient = useQueryClient();
   const [roleFilter, setRoleFilter] = useState<string>('');
   const [locationFilter, setLocationFilter] = useState<string>('');
   const [skillFilter, setSkillFilter] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<boolean | 'all'>('all');
   const [selectedUser, setSelectedUser] = useState<UserSummary | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const { register: regCreate, handleSubmit: handleCreate, reset: resetCreate, formState: { isSubmitting: createSubmitting, errors: createErrors } } = useForm<CreateUserForm>({
+    defaultValues: { role: 'staff' },
+  });
+
+  async function onCreateUser(data: CreateUserForm) {
+    try {
+      await apiClient.post('/users', data);
+      toast.success('User created. They can log in with the provided email and password.');
+      setCreateOpen(false);
+      resetCreate();
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all({}) });
+    } catch (e: unknown) {
+      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to create user');
+    }
+  }
 
   const filters = useMemo(
     () => ({
@@ -70,13 +110,63 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-lg font-semibold text-slate-50">Staff</h1>
+        <h1 className="text-lg font-semibold text-foreground">Staff</h1>
+        <RoleGate role={['admin']}>
+          <Button size="sm" className="min-h-[44px] sm:min-h-0" onClick={() => setCreateOpen(true)}>
+            <PlusIcon className="mr-1.5 size-4" /> Add user
+          </Button>
+        </RoleGate>
       </div>
 
-      <PermissionGate require="users:view" fallback={<p className="text-sm text-slate-400">You don&apos;t have permission to view the staff list.</p>}>
-        <div className="flex flex-wrap gap-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create user</DialogTitle>
+            <DialogDescription>Add a new staff member, manager, or admin to the platform.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate(onCreateUser)} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">First name *</label>
+                <Input {...regCreate('firstName', { required: true })} />
+                {createErrors.firstName && <p className="text-xs text-destructive">Required</p>}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Last name *</label>
+                <Input {...regCreate('lastName', { required: true })} />
+                {createErrors.lastName && <p className="text-xs text-destructive">Required</p>}
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Email *</label>
+              <Input {...regCreate('email', { required: true })} type="email" placeholder="user@coastaleats.com" />
+              {createErrors.email && <p className="text-xs text-destructive">Required</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Password *</label>
+              <Input {...regCreate('password', { required: true, minLength: 8 })} type="password" placeholder="Min 8 characters" />
+              {createErrors.password && <p className="text-xs text-destructive">Min 8 characters required</p>}
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Role *</label>
+              <select className="w-full h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground" {...regCreate('role')}>
+                <option value="staff">Staff</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={createSubmitting}>Create user</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <PermissionGate require="users:view" fallback={<p className="text-sm text-muted-foreground">You don&apos;t have permission to view the staff list.</p>}>
+        <div className="flex flex-wrap gap-3 rounded-lg border border-border bg-card p-3">
           <select
-            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
           >
@@ -86,7 +176,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             <option value="staff">Staff</option>
           </select>
           <select
-            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
           >
@@ -98,7 +188,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             ))}
           </select>
           <select
-            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={skillFilter}
             onChange={(e) => setSkillFilter(e.target.value)}
           >
@@ -110,7 +200,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             ))}
           </select>
           <select
-            className="h-10 w-full min-h-[44px] rounded-md border border-slate-700 bg-slate-900 px-2 text-sm text-slate-200 sm:h-9 sm:w-auto sm:min-h-0"
+            className="h-10 w-full min-h-[44px] rounded-md border border-input bg-background px-2 text-sm text-foreground sm:h-9 sm:w-auto sm:min-h-0"
             value={activeFilter === 'all' ? 'all' : activeFilter ? 'active' : 'inactive'}
             onChange={(e) =>
               setActiveFilter(
@@ -138,23 +228,23 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
           </>
         )}
         {!isLoading && !isError && (
-          <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+          <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
             <table className="w-full min-w-[900px] text-sm">
               <thead>
-                <tr className="border-b border-slate-700 bg-slate-900/70">
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Staff</th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Role</th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Skills</th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Certified locations</th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Hours this week</th>
-                  <th className="px-3 py-2 text-left font-medium text-slate-300">Status</th>
+                <tr className="border-b border-border bg-muted">
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Staff</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Role</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Skills</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Certified locations</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Hours this week</th>
+                  <th className="px-3 py-2 text-left font-medium text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((user) => (
                   <tr
                     key={user.id}
-                    className="cursor-pointer border-b border-slate-800 transition hover:bg-slate-800/50"
+                    className="cursor-pointer border-b border-border transition hover:bg-muted"
                     onClick={() => openDetail(user)}
                   >
                     <td className="px-3 py-2">
@@ -166,10 +256,10 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-slate-100">
+                          <p className="font-medium text-foreground">
                             {user.firstName} {user.lastName}
                           </p>
-                          <p className="text-xs text-slate-500">{user.email}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
                         </div>
                       </div>
                     </td>
@@ -184,7 +274,7 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
                           </Badge>
                         ))}
                         {(!user.skills || user.skills.length === 0) && (
-                          <span className="text-slate-500">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </div>
                     </td>
@@ -199,11 +289,11 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
                           ))}
                         {(!user.locationCertifications ||
                           user.locationCertifications.filter((c) => !c.revokedAt).length === 0) && (
-                          <span className="text-slate-500">—</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-slate-400">—</td>
+                    <td className="px-3 py-2 text-muted-foreground">—</td>
                     <td className="px-3 py-2">
                       <Badge variant={user.isActive ? 'default' : 'secondary'}>
                         {user.isActive ? 'Active' : 'Inactive'}
@@ -215,8 +305,8 @@ export function StaffClient({ locations, skills }: StaffClientProps) {
             </table>
             {filtered.length === 0 && (
               <div className="flex flex-col items-center justify-center px-3 py-12 text-center">
-                <p className="text-sm font-medium text-slate-300">No staff match the filters.</p>
-                <p className="mt-1 text-xs text-slate-500">Try changing filters or add staff from your admin.</p>
+                <p className="text-sm font-medium text-muted-foreground">No staff match the filters.</p>
+                <p className="mt-1 text-xs text-muted-foreground">Try changing filters or add staff from your admin.</p>
               </div>
             )}
           </div>

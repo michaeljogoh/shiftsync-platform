@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek, addDays } from 'date-fns';
 import { Shift } from '../shifts/entities/shift.entity';
 import { ShiftAssignment } from '../assignments/entities/shift-assignment.entity';
 import { User } from '../users/entities/user.entity';
+import { AssignmentsService } from '../assignments/assignments.service';
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -19,6 +20,7 @@ export class AnalyticsService {
     private readonly assignmentsRepo: Repository<ShiftAssignment>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly assignmentsService: AssignmentsService,
   ) {}
 
   private getCached<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -217,12 +219,13 @@ export class AnalyticsService {
 
   async whatIf(userId: string, shiftId: string): Promise<{
     projectedWeeklyHours: number;
-    conflicts: unknown[];
+    conflicts: { rule: string; message: string }[];
     warnings: string[];
+    canAssign: boolean;
   }> {
     const shift = await this.shiftsRepo.findOne({
       where: { id: shiftId },
-      relations: ['location'],
+      relations: ['location', 'requiredSkill'],
     });
     if (!shift) throw new Error('Shift not found');
 
@@ -246,15 +249,23 @@ export class AnalyticsService {
       }
     }
 
-    const conflicts: unknown[] = [];
+    const conflicts: { rule: string; message: string }[] = [];
     const warnings: string[] = [];
-    if (totalHours >= 40) warnings.push('Would exceed 40h/week');
-    if (totalHours >= 35) warnings.push('Approaching overtime');
+
+    const validation = await this.assignmentsService.validateOnly(shiftId, userId);
+    if (!validation.valid) {
+      conflicts.push({ rule: 'constraint', message: validation.message ?? 'Constraint violation' });
+    }
+
+    const projectedWeeklyHours = Math.round(totalHours * 10) / 10;
+    if (totalHours >= 40) warnings.push(`Would reach ${projectedWeeklyHours}h this week (exceeds 40h)`);
+    else if (totalHours >= 35) warnings.push(`Would reach ${projectedWeeklyHours}h this week (approaching 40h)`);
 
     return {
-      projectedWeeklyHours: Math.round(totalHours * 10) / 10,
+      projectedWeeklyHours,
       conflicts,
       warnings,
+      canAssign: conflicts.length === 0,
     };
   }
 

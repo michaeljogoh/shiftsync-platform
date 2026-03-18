@@ -34,6 +34,7 @@ import {
   CurrentUser,
 } from '../../common/decorators/auth.decorators';
 import type { SessionUser } from '../auth/auth.types';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 
 @ApiTags('Shifts')
 @ApiBearerAuth()
@@ -66,6 +67,7 @@ export class ShiftsController {
   @RequirePermission('shifts:create')
   @Roles('admin', 'manager')
   @UseGuards(LocationAccessGuard)
+  @Auditable('shift')
   @ApiOperation({ summary: 'Create shift' })
   @ApiCreatedResponse({ description: 'Shift created' })
   @ApiBadRequestResponse({ description: 'Validation failed or invalid dates' })
@@ -84,6 +86,7 @@ export class ShiftsController {
   @Patch(':id')
   @RequirePermission('shifts:update')
   @Roles('admin', 'manager')
+  @Auditable('shift')
   @ApiOperation({ summary: 'Update shift' })
   @ApiNotFoundResponse({ description: 'Shift not found' })
   @ApiConflictResponse({ description: 'Within edit cutoff for published shift' })
@@ -98,6 +101,7 @@ export class ShiftsController {
   @Delete(':id')
   @RequirePermission('shifts:delete')
   @Roles('admin', 'manager')
+  @Auditable('shift')
   @ApiOperation({ summary: 'Delete shift (draft only)' })
   async remove(@Param('id') id: string) {
     await this.shiftsService.remove(id);
@@ -106,6 +110,7 @@ export class ShiftsController {
   @Post(':id/publish')
   @RequirePermission('shifts:publish')
   @Roles('admin', 'manager')
+  @Auditable('shift')
   @ApiOperation({ summary: 'Publish shift' })
   async publish(@Param('id') id: string) {
     return this.shiftsService.publish(id);
@@ -114,6 +119,7 @@ export class ShiftsController {
   @Post(':id/unpublish')
   @RequirePermission('shifts:publish')
   @Roles('admin', 'manager')
+  @Auditable('shift')
   @ApiOperation({ summary: 'Unpublish shift' })
   async unpublish(@Param('id') id: string) {
     return this.shiftsService.unpublish(id);
@@ -130,6 +136,7 @@ export class ShiftsController {
   @Post(':id/assignments')
   @RequirePermission('assignments:create')
   @Roles('admin', 'manager')
+  @Auditable('assignment')
   @ApiOperation({ summary: 'Create assignment' })
   async createAssignment(
     @CurrentUser() user: SessionUser,
@@ -142,6 +149,7 @@ export class ShiftsController {
   @Delete(':id/assignments/:assignId')
   @RequirePermission('assignments:delete')
   @Roles('admin', 'manager')
+  @Auditable('assignment')
   @ApiOperation({ summary: 'Remove assignment' })
   async deleteAssignment(
     @Param('id') shiftId: string,

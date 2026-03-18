@@ -6,21 +6,21 @@ const ROWS = 8;
 
 export function StaffTableSkeleton() {
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-800 -mx-1 px-1 sm:mx-0 sm:px-0">
+    <div className="overflow-x-auto rounded-lg border border-border -mx-1 px-1 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[900px] text-sm">
         <thead>
-          <tr className="border-b border-slate-700 bg-slate-900/70">
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Staff</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Role</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Skills</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Certified locations</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Hours this week</th>
-            <th className="px-3 py-2 text-left font-medium text-slate-300">Status</th>
+          <tr className="border-b border-border bg-muted">
+            <th className="px-3 py-2 text-left font-medium text-foreground">Staff</th>
+            <th className="px-3 py-2 text-left font-medium text-foreground">Role</th>
+            <th className="px-3 py-2 text-left font-medium text-foreground">Skills</th>
+            <th className="px-3 py-2 text-left font-medium text-foreground">Certified locations</th>
+            <th className="px-3 py-2 text-left font-medium text-foreground">Hours this week</th>
+            <th className="px-3 py-2 text-left font-medium text-foreground">Status</th>
           </tr>
         </thead>
         <tbody>
           {Array.from({ length: ROWS }, (_, i) => (
-            <tr key={i} className="border-b border-slate-800">
+            <tr key={i} className="border-b border-border">
               <td className="px-3 py-2">
                 <div className="flex items-center gap-2">
                   <Skeleton className="size-8 rounded-full" />

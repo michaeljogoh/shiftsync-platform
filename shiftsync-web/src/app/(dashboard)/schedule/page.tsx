@@ -24,7 +24,7 @@ export default async function SchedulePage({
 }) {
   const session = await getServerSession();
   if (!session) {
-    return <div className="text-sm text-slate-300">Not authenticated.</div>;
+    return <div className="text-sm text-muted-foreground">Not authenticated.</div>;
   }
 
   const week = searchParams.week ?? getCurrentWeekISO();

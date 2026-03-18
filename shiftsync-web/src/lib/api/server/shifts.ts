@@ -11,6 +11,7 @@ export interface ShiftSummary {
   endAt: string;
   status: 'draft' | 'published' | 'cancelled';
   headcountNeeded: number;
+  editCutoffHours?: number;
   isPremium?: boolean;
   assignments?: { id: string; user?: { id: string; firstName: string; lastName: string } }[];
 }

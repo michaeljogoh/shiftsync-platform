@@ -14,6 +14,7 @@ export class AuditService {
     entityType?: string;
     entityId?: string;
     actorId?: string;
+    actorEmail?: string;
     locationId?: string;
     limit?: number;
     offset?: number;
@@ -21,11 +22,13 @@ export class AuditService {
     const qb = this.auditRepo
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.actor', 'actor')
+      .leftJoinAndSelect('a.location', 'location')
       .orderBy('a.createdAt', 'DESC');
 
     if (filters.entityType) qb.andWhere('a.entityType = :entityType', { entityType: filters.entityType });
     if (filters.entityId) qb.andWhere('a.entityId = :entityId', { entityId: filters.entityId });
     if (filters.actorId) qb.andWhere('a.actorId = :actorId', { actorId: filters.actorId });
+    if (filters.actorEmail) qb.andWhere('actor.email ILIKE :actorEmail', { actorEmail: `%${filters.actorEmail}%` });
     if (filters.locationId) qb.andWhere('a.locationId = :locationId', { locationId: filters.locationId });
 
     qb.take(filters.limit ?? 25).skip(filters.offset ?? 0);
@@ -36,6 +39,7 @@ export class AuditService {
     entityType?: string;
     entityId?: string;
     actorId?: string;
+    actorEmail?: string;
     locationId?: string;
   }): Promise<string> {
     const logs = await this.findAll({ ...filters, limit: 1000 });

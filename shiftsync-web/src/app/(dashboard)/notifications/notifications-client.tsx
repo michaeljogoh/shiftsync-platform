@@ -96,7 +96,7 @@ export function NotificationsClient() {
   if (isInitialLoading) {
     return (
       <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-slate-50">Notifications</h1>
+        <h1 className="text-lg font-semibold text-foreground">Notifications</h1>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
             <Skeleton key={i} className="h-20 w-full rounded-lg" />
@@ -109,7 +109,7 @@ export function NotificationsClient() {
   if (listError) {
     return (
       <div className="space-y-4">
-        <h1 className="text-lg font-semibold text-slate-50">Notifications</h1>
+        <h1 className="text-lg font-semibold text-foreground">Notifications</h1>
         <FullPageError
           message="Failed to load notifications. Please try again."
           onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() })}
@@ -123,7 +123,7 @@ export function NotificationsClient() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-slate-50">Notifications</h1>
+        <h1 className="text-lg font-semibold text-foreground">Notifications</h1>
         <div className="flex items-center gap-2">
           {showUnreadBadge && (
             <>
@@ -139,9 +139,9 @@ export function NotificationsClient() {
       </div>
 
       {notifications.length === 0 ? (
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-slate-100">You&apos;re all caught up ✓</CardTitle>
+            <CardTitle className="text-foreground">You&apos;re all caught up ✓</CardTitle>
             <CardDescription>No new notifications. Check back later.</CardDescription>
           </CardHeader>
         </Card>
@@ -149,7 +149,7 @@ export function NotificationsClient() {
         <>
           {groups.today.length > 0 && (
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Today</h2>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground0">Today</h2>
               <ul className="space-y-2">
                 {groups.today.map((n) => (
                   <NotificationCard key={n.id} notification={n} onUpdate={() => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() })} />
@@ -159,7 +159,7 @@ export function NotificationsClient() {
           )}
           {groups.thisWeek.length > 0 && (
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">This week</h2>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground0">This week</h2>
               <ul className="space-y-2">
                 {groups.thisWeek.map((n) => (
                   <NotificationCard key={n.id} notification={n} onUpdate={() => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() })} />
@@ -169,7 +169,7 @@ export function NotificationsClient() {
           )}
           {groups.older.length > 0 && (
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Older</h2>
+              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground0">Older</h2>
               <ul className="space-y-2">
                 {groups.older.map((n) => (
                   <NotificationCard key={n.id} notification={n} onUpdate={() => queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() })} />
@@ -218,22 +218,22 @@ function NotificationCard({
 
   const content = (
     <Card
-      className={`cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/50 ${
-        n.isRead ? 'bg-slate-900/30' : 'bg-slate-900/60'
+      className={`cursor-pointer border-border transition-colors hover:bg-muted ${
+        n.isRead ? 'bg-muted/30' : 'bg-muted/50'
       }`}
       onClick={handleClick}
     >
         <CardHeader className="py-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-100">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-foreground">
                 {!n.isRead && <span className="size-2 shrink-0 rounded-full bg-primary" />}
                 {n.title}
               </CardTitle>
               {n.body && (
-                <CardDescription className="mt-1 text-xs text-slate-400">{n.body}</CardDescription>
+                <CardDescription className="mt-1 text-xs text-muted-foreground">{n.body}</CardDescription>
               )}
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-foreground0">
                 {new Date(n.createdAt).toLocaleString()}
               </p>
             </div>

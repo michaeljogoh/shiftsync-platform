@@ -1,21 +1,12 @@
 "use client"
 
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
-import { ChevronRightIcon } from "lucide-react"
 
 export function NavMain({
   items,
@@ -26,54 +17,47 @@ export function NavMain({
     icon?: React.ReactNode
     isActive?: boolean
     badgeContent?: number
-    items?: {
-      title: string
-      url: string
-    }[]
+    items?: { title: string; url: string }[]
   }[]
 }) {
+  const pathname = usePathname()
+
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => (
-          <Collapsible
-            key={item.title}
-            asChild
-            defaultOpen={item.isActive}
-            className="group/collapsible"
-          >
-            <SidebarMenuItem>
-              <CollapsibleTrigger asChild>
-                <SidebarMenuButton tooltip={item.title}>
-                  {item.icon}
-                  <span>{item.title}</span>
-                  <span className="ml-auto flex items-center gap-1">
-                    {item.badgeContent != null && item.badgeContent > 0 && (
-                      <span className="flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                        {item.badgeContent > 99 ? '99+' : item.badgeContent}
-                      </span>
-                    )}
-                    <ChevronRightIcon className="size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+        {items.map((item) => {
+          const active =
+            item.url === "/"
+              ? pathname === "/"
+              : pathname === item.url || pathname?.startsWith(item.url + "/")
+
+          return (
+            <SidebarMenuItem key={item.title}>
+              <Link
+                href={item.url}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors cursor-pointer [&_svg]:shrink-0 [&_svg]:size-4 ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-muted"
+                }`}
+              >
+                {item.icon}
+                <span className="truncate">{item.title}</span>
+                {item.badgeContent != null && item.badgeContent > 0 && (
+                  <span
+                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-medium ${
+                      active
+                        ? "bg-primary-foreground text-primary"
+                        : "bg-primary text-primary-foreground"
+                    }`}
+                  >
+                    {item.badgeContent > 99 ? "99+" : item.badgeContent}
                   </span>
-                </SidebarMenuButton>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
-                          <span>{subItem.title}</span>
-                        </a>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              </CollapsibleContent>
+                )}
+              </Link>
             </SidebarMenuItem>
-          </Collapsible>
-        ))}
+          )
+        })}
       </SidebarMenu>
     </SidebarGroup>
   )

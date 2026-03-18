@@ -18,16 +18,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <ConstraintFeedbackRoot />
       <AppSidebar />
       <SidebarInset>
-        <div className="flex min-h-screen flex-col bg-slate-950 text-slate-50">
-          <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-800 bg-slate-900/80 px-3 sm:px-4">
+        <div className="flex min-h-screen flex-col bg-background text-foreground">
+          <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-3 sm:px-4">
             <div className="flex min-h-[44px] min-w-[44px] items-center md:min-w-0">
-              <SidebarTrigger className="-ml-1 md:hidden" aria-label="Open menu" />
+              <SidebarTrigger className="-ml-1" aria-label="Open menu" />
             </div>
-            <p className="truncate text-sm font-medium text-slate-200">
-              ShiftSync dashboard
-            </p>
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="hidden sm:inline">Next.js · Tailwind · shadcn/ui</span>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex size-2 rounded-full bg-green-500" title="Connected" />
+              <span className="hidden sm:inline text-[11px]">ShiftSync</span>
             </div>
           </header>
           <main className="flex-1 overflow-auto p-3 sm:p-4">

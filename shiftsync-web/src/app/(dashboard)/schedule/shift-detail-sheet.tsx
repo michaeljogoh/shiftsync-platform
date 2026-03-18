@@ -75,8 +75,8 @@ export function ShiftDetailSheet({
 
   return (
     <ShiftSheetRoot open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
-        <SheetHeader>
+      <SheetContent side="right" className="w-full p-4 sm:max-w-md">
+        <SheetHeader className="p-0">
           <SheetTitle>Shift details</SheetTitle>
           <SheetDescription>
             {shift ? (
@@ -115,11 +115,11 @@ export function ShiftDetailSheet({
                       : null;
               if (slotsOpen > 0 && countdownLabel) {
                 return (
-                  <div className="rounded-lg border border-amber-500/50 bg-amber-950/30 px-3 py-2 text-sm">
-                    <p className="font-medium text-amber-200">
+                  <div className="rounded-lg border border-primary/50 bg-primary/10 px-3 py-2 text-sm">
+                    <p className="font-medium text-foreground">
                       {slotsOpen} staff called out — {countdownLabel} until shift
                     </p>
-                    <p className="mt-0.5 text-xs text-amber-200/80">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Assign a replacement below.
                     </p>
                   </div>
@@ -132,7 +132,7 @@ export function ShiftDetailSheet({
                 {shift.status}
               </Badge>
               {shift.isPremium && (
-                <Badge variant="outline" className="text-amber-500">
+                <Badge variant="outline" className="text-primary">
                   Premium
                 </Badge>
               )}
@@ -164,8 +164,8 @@ export function ShiftDetailSheet({
             </div>
             <div className="grid gap-2 text-sm">
               <div>
-                <span className="text-slate-500">Time (location)</span>
-                <p className="font-medium text-slate-100">
+                <span className="text-muted-foreground">Time (location)</span>
+                <p className="font-medium text-foreground">
                   {(() => {
                     const tz = shift.location?.ianaTimezone ?? 'UTC';
                     const { primary, secondary } = formatShiftTimeRange({
@@ -178,7 +178,7 @@ export function ShiftDetailSheet({
                       <>
                         {primary}
                         {secondary && (
-                          <span className="ml-1 text-slate-500 font-normal">{secondary}</span>
+                          <span className="ml-1 text-muted-foreground font-normal">{secondary}</span>
                         )}
                       </>
                     );
@@ -186,15 +186,15 @@ export function ShiftDetailSheet({
                 </p>
               </div>
               <div>
-                <span className="text-slate-500">Required skill</span>
-                <p className="font-medium text-slate-100">{shift.requiredSkill?.name ?? '—'}</p>
+                <span className="text-muted-foreground">Required skill</span>
+                <p className="font-medium text-foreground">{shift.requiredSkill?.name ?? '—'}</p>
               </div>
               <div>
-                <span className="text-slate-500">Headcount</span>
-                <p className="font-medium text-slate-100">
+                <span className="text-muted-foreground">Headcount</span>
+                <p className="font-medium text-foreground">
                   {(shift.assignments?.length ?? 0)} / {shift.headcountNeeded}
                 </p>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-800">
+                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-primary transition-all"
                     style={{
@@ -208,27 +208,27 @@ export function ShiftDetailSheet({
               </div>
             </div>
             <div>
-              <h4 className="mb-2 text-sm font-medium text-slate-300">Assigned staff</h4>
+              <h4 className="mb-2 text-sm font-medium text-foreground">Assigned staff</h4>
               {shift.assignments?.length ? (
                 <ul className="space-y-1">
                   {shift.assignments.map((a) => (
-                    <li key={a.id} className="flex items-center gap-2 rounded-md bg-slate-800/50 px-2 py-1.5">
+                    <li key={a.id} className="flex items-center gap-2 rounded-md bg-muted px-2 py-1.5">
                       <Avatar className="h-7 w-7">
                         <AvatarFallback className="text-xs">
                           {a.user ? `${a.user.firstName[0]}${a.user.lastName[0]}` : '?'}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-slate-200">
+                      <span className="text-sm text-foreground">
                         {a.user ? `${a.user.firstName} ${a.user.lastName}` : 'Unknown'}
                       </span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-slate-500">No one assigned yet.</p>
+                <p className="text-sm text-muted-foreground">No one assigned yet.</p>
               )}
             </div>
-            <div className="flex gap-2 border-t border-slate-800 pt-3">
+            <div className="flex gap-2 border-t border-border pt-3">
               <Button
                 variant={activeTab === 'details' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -249,13 +249,13 @@ export function ShiftDetailSheet({
             </div>
             {activeTab === 'history' && (
               <div className="space-y-2">
-                <h4 className="text-sm font-medium text-slate-300">Audit trail</h4>
+                <h4 className="text-sm font-medium text-foreground">Audit trail</h4>
                 {shift.history?.length ? (
                   <ul className="space-y-2 text-xs">
                     {shift.history.map((h) => (
-                      <li key={h.id} className="rounded border border-slate-700 bg-slate-900/50 px-2 py-1.5">
+                      <li key={h.id} className="rounded border border-border bg-card px-2 py-1.5">
                         <span className="font-medium">{h.action}</span>
-                        <span className="text-slate-500">
+                        <span className="text-muted-foreground">
                           {' '}
                           · {new Date(h.createdAt).toLocaleString()} · {h.actor?.email ?? 'System'}
                         </span>
@@ -263,7 +263,7 @@ export function ShiftDetailSheet({
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-slate-500">No history yet.</p>
+                  <p className="text-sm text-muted-foreground">No history yet.</p>
                 )}
               </div>
             )}

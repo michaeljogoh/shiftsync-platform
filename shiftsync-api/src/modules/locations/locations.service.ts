@@ -74,6 +74,11 @@ export class LocationsService {
       .remove(managerId);
   }
 
+  async getManagers(locationId: string): Promise<import('../users/entities/user.entity').User[]> {
+    const loc = await this.findById(locationId, ['managers']);
+    return loc.managers ?? [];
+  }
+
   async getCertifiedStaff(locationId: string): Promise<UserLocationCertification[]> {
     return this.certsRepo.find({
       where: { locationId, revokedAt: null as unknown as Date },

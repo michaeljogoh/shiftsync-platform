@@ -55,13 +55,13 @@ export function ScheduleListView({
     <div className="space-y-6">
       {grouped.map(([dateKey, locMap]) => (
         <div key={dateKey}>
-          <h3 className="mb-2 text-sm font-semibold text-slate-300">
+          <h3 className="mb-2 text-sm font-semibold text-foreground">
             {formatDate(dateKey + 'T12:00:00.000Z')}
           </h3>
           <div className="space-y-4">
             {Array.from(locMap.entries()).map(([locationId, list]) => (
               <div key={locationId}>
-                <p className="mb-1 text-xs text-slate-500">
+                <p className="mb-1 text-xs text-muted-foreground">
                   {list[0]?.location?.name ?? locationId}
                 </p>
                 <ul className="space-y-1">
@@ -72,7 +72,7 @@ export function ScheduleListView({
                     return (
                       <li
                         key={shift.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-900/50 px-3 py-2 transition hover:bg-slate-800/50"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 transition hover:bg-muted"
                       >
                         <button
                           type="button"
@@ -80,7 +80,7 @@ export function ScheduleListView({
                           onClick={() => onShiftClick(shift)}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-slate-100">
+                            <span className="font-medium text-foreground">
                               {shift.title ?? 'Untitled shift'}
                             </span>
                             <Badge
@@ -96,7 +96,7 @@ export function ScheduleListView({
                               {shift.status}
                             </Badge>
                           </div>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                          <div className="mt-0.5 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             <span>
                               {(() => {
                                 const { primary, secondary } = formatShiftTimeRange({
@@ -109,7 +109,7 @@ export function ScheduleListView({
                                   <>
                                     {primary}
                                     {secondary && (
-                                      <span className="text-slate-500">{secondary}</span>
+                                      <span className="text-muted-foreground">{secondary}</span>
                                     )}
                                   </>
                                 );
@@ -131,7 +131,7 @@ export function ScheduleListView({
                                 <span>No one assigned</span>
                               )}
                               {assigned.length > 3 && (
-                                <span className="text-slate-500">+{assigned.length - 3}</span>
+                                <span className="text-muted-foreground">+{assigned.length - 3}</span>
                               )}
                             </span>
                             <span>

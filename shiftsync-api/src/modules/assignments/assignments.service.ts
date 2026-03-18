@@ -133,9 +133,16 @@ export class AssignmentsService {
 
       const overlapCheck = await this.checkDoubleBooking(dto.userId, shift);
       if (!overlapCheck.valid) {
-        this.realtimeService.emitToUser(assignedBy, RealtimeEvents.ASSIGNMENT_CONFLICT, {
+        const conflictPayload = {
           message: overlapCheck.message,
+          userId: dto.userId,
+          shiftId: shift.id,
           ...overlapCheck.details,
+        };
+        this.realtimeService.emitToUser(assignedBy, RealtimeEvents.ASSIGNMENT_CONFLICT, conflictPayload);
+        this.realtimeService.emitToLocation(shift.locationId, RealtimeEvents.ASSIGNMENT_CONFLICT, {
+          ...conflictPayload,
+          triggeredBy: assignedBy,
         });
         throw new AssignmentConflictException(
           overlapCheck.message!,

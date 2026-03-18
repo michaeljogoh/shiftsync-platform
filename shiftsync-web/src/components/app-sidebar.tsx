@@ -28,6 +28,7 @@ import {
 } from "lucide-react"
 
 const navMainItems = [
+  // { title: "Dashboard", url: "/", icon: <GalleryVerticalEndIcon className="size-4" />, items: [{ title: "Overview", url: "/" }] },
   { title: "Schedule", url: "/schedule", icon: <CalendarIcon className="size-4" />, items: [{ title: "View", url: "/schedule" }] },
   { title: "Staff", url: "/staff", icon: <UsersIcon className="size-4" />, items: [{ title: "View", url: "/staff" }] },
   { title: "Swap & Drop", url: "/swaps", icon: <ArrowLeftRightIcon className="size-4" />, items: [{ title: "View", url: "/swaps" }] },
@@ -36,6 +37,7 @@ const navMainItems = [
   { title: "Notifications", url: "/notifications", icon: <BellIcon className="size-4" />, items: [{ title: "View", url: "/notifications" }] },
   { title: "Audit Log", url: "/audit", icon: <FileTextIcon className="size-4" />, items: [{ title: "View", url: "/audit" }] },
   { title: "Locations", url: "/locations", icon: <MapPinIcon className="size-4" />, items: [{ title: "View", url: "/locations" }] },
+  { title: "Skills", url: "/skills", icon: <BarChart3Icon className="size-4" />, items: [{ title: "View", url: "/skills" }] },
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -51,14 +53,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarHeader>
         <TeamSwitcher teams={[{ name: "ShiftSync", logo: <GalleryVerticalEndIcon />, plan: "Platform" }]} />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="text-[ oklch(0.141 0.005 285.823) ]">
         <NavMain items={navMainWithActive} />
       </SidebarContent>
       <SidebarFooter>
         <div className="px-2 py-1.5">
           <SocketStatus />
         </div>
-        <NavUser user={{ name: "shadcn", email: "m@example.com", avatar: "/avatars/shadcn.jpg" }} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

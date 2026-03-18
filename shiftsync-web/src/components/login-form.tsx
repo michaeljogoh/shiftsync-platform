@@ -57,8 +57,8 @@ export function LoginForm({
         email: data.email,
         password: data.password,
       });
-      const { accessToken, session } = res.data;
-      setAuth(accessToken, session, data.rememberMe ?? true);
+      const { accessToken, refreshToken, session } = res.data;
+      setAuth(accessToken, session, data.rememberMe ?? true, refreshToken);
       toast.success('Signed in successfully');
       router.push('/dashboard');
       router.refresh();
@@ -100,7 +100,7 @@ export function LoginForm({
           <form onSubmit={handleSubmit(onSubmit)} noValidate>
             <FieldGroup>
               {errors.root && (
-                <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-sm text-red-100">
+                <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {errors.root.message}
                 </div>
               )}
@@ -144,13 +144,13 @@ export function LoginForm({
 
               <Field>
                 <div className="flex items-center gap-2">
-                  <input
+                  {/* <input
                     type="checkbox"
                     id="rememberMe"
                     {...register('rememberMe')}
-                    className="h-4 w-4 rounded border-slate-600 bg-slate-900"
-                  />
-                  <FieldLabel htmlFor="rememberMe" className="font-normal text-slate-300">
+                    className="h-4 w-4 rounded border-input bg-background"
+                  /> */}
+                  <FieldLabel htmlFor="rememberMe" className="font-normal text-muted-foreground">
                     Remember me
                   </FieldLabel>
                 </div>

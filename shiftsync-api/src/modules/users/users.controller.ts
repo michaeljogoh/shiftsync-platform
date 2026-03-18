@@ -34,6 +34,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { Roles, RequirePermission, CurrentUser } from '../../common/decorators/auth.decorators';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 import type { SessionUser } from '../auth/auth.types';
 
 @ApiTags('Users')
@@ -63,6 +64,7 @@ export class UsersController {
   @Post()
   @RequirePermission('users:create')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Create user (Admin)' })
   @ApiCreatedResponse({ description: 'User created' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
@@ -80,6 +82,7 @@ export class UsersController {
   }
 
   @Patch(':id')
+  @Auditable('user')
   @ApiOperation({ summary: 'Update user' })
   async update(
     @CurrentUser() user: SessionUser,
@@ -93,6 +96,7 @@ export class UsersController {
   @Delete(':id')
   @RequirePermission('users:delete')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Soft delete user (Admin)' })
   async remove(@Param('id') id: string) {
     await this.usersService.remove(id);
@@ -101,6 +105,7 @@ export class UsersController {
   @Post(':id/skills')
   @RequirePermission('users:update')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Add skill to user (Admin)' })
   async addSkill(@Param('id') id: string, @Body('skillId') skillId: string) {
     await this.usersService.addSkill(id, skillId);
@@ -109,6 +114,7 @@ export class UsersController {
   @Delete(':id/skills/:skillId')
   @RequirePermission('users:update')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Remove skill from user (Admin)' })
   async removeSkill(@Param('id') id: string, @Param('skillId') skillId: string) {
     await this.usersService.removeSkill(id, skillId);
@@ -117,6 +123,7 @@ export class UsersController {
   @Post(':id/certifications')
   @RequirePermission('users:update')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Certify user for location (Admin)' })
   async addCertification(
     @Param('id') id: string,
@@ -128,6 +135,7 @@ export class UsersController {
   @Delete(':id/certifications/:locationId')
   @RequirePermission('users:update')
   @Roles('admin')
+  @Auditable('user')
   @ApiOperation({ summary: 'Revoke certification (Admin)' })
   async revokeCertification(
     @CurrentUser() user: SessionUser,

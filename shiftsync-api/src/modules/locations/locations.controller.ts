@@ -25,6 +25,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { LocationAccessGuard } from '../../common/guards/location-access.guard';
 import { Roles, RequirePermission } from '../../common/decorators/auth.decorators';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 
 @ApiTags('Locations')
 @ApiBearerAuth()
@@ -43,6 +44,7 @@ export class LocationsController {
   @Post()
   @RequirePermission('locations:create')
   @Roles('admin')
+  @Auditable('location')
   @ApiOperation({ summary: 'Create location (Admin)' })
   @ApiCreatedResponse({ description: 'Location created' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
@@ -62,6 +64,7 @@ export class LocationsController {
   @Patch(':id')
   @RequirePermission('locations:update')
   @Roles('admin')
+  @Auditable('location')
   @ApiOperation({ summary: 'Update location (Admin)' })
   async update(@Param('id') id: string, @Body() dto: UpdateLocationDto) {
     return this.locationsService.update(id, dto);
@@ -70,6 +73,7 @@ export class LocationsController {
   @Delete(':id')
   @RequirePermission('locations:delete')
   @Roles('admin')
+  @Auditable('location')
   @ApiOperation({ summary: 'Soft delete location (Admin)' })
   async remove(@Param('id') id: string) {
     await this.locationsService.remove(id);
@@ -78,6 +82,7 @@ export class LocationsController {
   @Post(':id/managers')
   @RequirePermission('locations:update')
   @Roles('admin')
+  @Auditable('location')
   @ApiOperation({ summary: 'Assign manager to location (Admin)' })
   async addManager(
     @Param('id') id: string,
@@ -89,9 +94,17 @@ export class LocationsController {
   @Delete(':id/managers/:uid')
   @RequirePermission('locations:update')
   @Roles('admin')
+  @Auditable('location')
   @ApiOperation({ summary: 'Remove manager from location (Admin)' })
   async removeManager(@Param('id') id: string, @Param('uid') uid: string) {
     await this.locationsService.removeManager(id, uid);
+  }
+
+  @Get(':id/managers')
+  @RequirePermission('locations:view')
+  @ApiOperation({ summary: 'List managers assigned to location' })
+  async getManagers(@Param('id') id: string) {
+    return this.locationsService.getManagers(id);
   }
 
   @Get(':id/staff')
