@@ -40,9 +40,18 @@ Built with a **NestJS REST API** (`shiftsync-api`) and a **Next.js 14 web fronte
 
 ## Deploy (Render)
 
-- **API (NestJS)**: `https://shiftsync-platform.onrender.com/`
-- **Web (Next.js)**: `https://shiftsync-platform-c2uk.onrender.com/login`
+### ⚠️ Important: Wake the API Before Logging In
+Render free services may go to sleep when inactive.  
+Before using the app, you must wake the backend API.
 
+- Open this URL in your browser (or make a request via Postman/cURL):
+  👉 https://shiftsync-platform.onrender.com/
+
+- Wait a few seconds until the API responds.
+
+### Access the App
+- **API (NestJS)**: `https://shiftsync-platform.onrender.com/`
+- **Web (Next.js)**: https://shiftsync-platform-c2uk.onrender.com/login
 ---
 
 ## Quick Start (Local)
