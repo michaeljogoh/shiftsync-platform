@@ -1,40 +1,20 @@
-FROM node:22-alpine AS deps
+# Use the official Node.js image as the base image
+FROM node:20-alpine
 
+# Set the working directory inside the container
 WORKDIR /usr/src/app
 
+# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
-RUN npm ci
 
-FROM node:22-alpine AS builder
-
-WORKDIR /usr/src/app
-
-# Install dependencies
-COPY package*.json ./
+# Install the application dependencies
 RUN npm install
 
-# Copy source files
-COPY tsconfig*.json nest-cli.json ./
-COPY src ./src
-
-# Build the NestJS project
-RUN npm run build
-
-# -------- Production Stage --------
-FROM node:22-alpine AS production
-
-WORKDIR /usr/src/app
-
-# Set production environment
-ENV NODE_ENV=production
-
-# Copy only package.json and install prod dependencies
-COPY package*.json ./
-RUN npm ci --omit=dev
-
-# Copy built files from builder
-COPY --from=builder /usr/src/app/dist ./dist
+# Copy the rest of the application files
+COPY . .
 
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+
+# Command to run the application
+CMD ["node", "dist/main"]
 
